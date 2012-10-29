@@ -1,0 +1,280 @@
+#!/bin/bash
+
+TEXTDOMAIN=usb_bootable_elive
+guitool=zenity
+location="$(pwd)"
+tempdir="${location}/Temporal_elive_usb_creation"
+
+if ! [[ "$UID" = "0" ]] ; then
+   $guitool --error --text=$"This tool needs to be launched as root"
+   exit
+fi
+
+trap 'exitme' 0 1 2 15
+
+##############################################################################
+exitme()
+{
+   if ! [[ -z "$1" ]] ; then
+      $guitool --error --text="$1"
+   fi
+
+   cd "$location"
+   umount ${tempdir}/iso 2>/dev/null || umount -l ${tempdir}/iso 2>/dev/null
+   umount ${tempdir}/usb 2>/dev/null || umount -l ${tempdir}/usb 2>/dev/null
+   rm -rf ${tempdir}
+
+   if ! [[ -z "$select_partition" ]] ; then
+
+      for part in $(mount | awk '{print $1}' | grep "${select_partition%%[0-9]*}")
+      do
+         umount "$part" 2>/dev/null
+      done
+   fi
+
+   exit 0
+}
+##############################################################################
+uuid_decode()
+{
+   # return needs to be clean
+   # example:  PART_ROOT=$(uuid_decode ${PART_ROOT})
+   unset uuid_partition
+   echo $1 | grep -q "^/dev" && echo $1 && return
+   uuid_partition="${1#UUID=}"
+   uuid_partition="$(readlink /dev/disk/by-uuid/$uuid_partition 2>/dev/null )"
+   if ! [[ -z $uuid_partition ]] ; then 
+       echo "/dev/${uuid_partition##*/}"
+   fi
+}
+#########################################################################
+list_available_partitions()
+{
+   unset list part device type size
+   for part in $(get_partitions)
+   do
+      unset found
+      for fstab in $(cat /etc/fstab | grep -v "^#" | awk '{print $1}' | grep -E "(/dev/|UUID=)" )
+      do
+         for fstab_decoded in $(uuid_decode "$fstab" )
+         do
+            [[ "$fstab_decoded" = "$part" ]] && found=yes
+         done
+      done
+      [[ "$found" = "yes" ]] && continue
+      device=$(echo $part | awk '{print $1}')
+
+      type=$( sfdisk --force --print-id ${device%%[0-9]*} ${device//[^0-9]/} 2>/dev/null )
+
+      # discard some FS
+      if ! [[ "$1" = "withswap" ]]; then
+         [[ "$type" = "82" ]] && continue
+      fi
+
+      [[ "$type" = "5" ]] && continue
+      [[ "$type" = "f" ]] && continue
+      [[ "$type" = "0" ]] && continue
+      list="$device\n$list"
+   done
+   unset device part type size
+
+   list=$( echo -e "$list" )
+
+   for blacklist in $blacklist_devices_list
+   do
+      list=${list//$blacklist /}
+   done
+
+#   list=$( echo "$list" | grep "^/dev" | sort -g | awk '{print $1"\n"$2" "$3}' )
+
+   for device in $list
+   do
+      if echo "$device" | grep -q "^/dev/" ; then
+         echo "$device"
+         if blkid "$device" | grep -q "LABEL=" ; then
+            name="$( blkid "$device" | sed -e 's|^.*LABEL=\"||g' -e 's|\".*$||g' )"
+         else
+            name=""
+         fi
+         echo "$name"
+      else
+         echo "$device"
+      fi
+      size=$( sfdisk --force -s $device 2>/dev/null | tail -1 )
+      size=$( echo "$size / 1024" | bc -l )
+      size=$( echo "${size%%.*}  MB" )
+      echo "$size"
+
+   done
+#   echo "$list" | grep -E "(/dev|MB)"
+}
+##############################################################################
+get_partitions()
+{
+   if [ "$(echo /dev/[sh]d[a-z][0-9]  )" != '/dev/[sh]d[a-z][0-9]' ];then
+      listpartitions="`echo /dev/[sh]d[a-z][0-9]`"
+      if [ "$(echo /dev/[sh]d[a-z][0-9][0-9]  )" != '/dev/[sh]d[a-z][0-9][0-9]' ];then
+         listpartitions="$listpartitions `echo /dev/[sh]d[a-z][0-9][0-9]`"
+         if [ "$(echo /dev/[sh]d[a-z][0-9][0-9][0-9]  )" != '/dev/[sh]d[a-z][0-9][0-9][0-9]' ];then
+            listpartitions="$listpartitions `echo /dev/[sh]d[a-z][0-9][0-9][0-9]`"
+         fi
+      fi
+   fi
+
+   # LVM support
+   if ( test -x /sbin/pvdisplay ) && ( vgchange -ay | grep -q "logical volume.*active" )
+   then
+      for pvname in $(pvdisplay | grep "PV Name" | sed 's|^.*/dev/|/dev/|g')
+      do 
+         # remove partition of a group detected previously is if found in a lvm group
+        listpartitions="$( echo ${listpartitions} | sed "s|$pvname||g" )"
+      done
+
+      for lvname in $(lvdisplay | grep "LV Name" | sort -u | sed 's|^.*LV Name||g' | awk '{print $1" "$2" "$3" "$4}' )
+      do
+         listpartitions="$listpartitions $lvname"
+      done
+      unset lvname pvname
+   fi
+
+   # RAID support (software)
+   if ( test -x /sbin/mdadm ) && ( cat /proc/mdstat | grep -q " : active.*raid" )
+   then
+      for raid in $(cat /proc/mdstat | grep " : active.*raid" | awk '{print $1}')
+      do
+         for dev in $( cat /proc/mdstat | grep "^${raid} :" | tr ' ' '\n' | grep "\[[[:digit:]]\]" | sed 's|\[.*$||g' )
+         do
+            listpartitions="$( echo ${listpartitions} | sed "s|/dev/${dev}||g" )"
+         done
+         listpartitions="${listpartitions} /dev/${raid}"
+      done
+      unset dev raid
+   fi
+   
+   # RAID support (fake-raid - bios featured))
+   if ( test -x /sbin/dmraid ) && ( test -d /dev/mapper ) 
+   then
+      bios_raid_list="$(dmraid -r | sed 's|\",.*$||g' | sed 's|:\ .*\"| |g')"
+      echo "$bios_raid_list" > /tmp/.bios_raid_list
+      while read -r bios_raid_disk
+      do
+         # RESULTS: 
+         # /dev/sdb jmicron_GRAID
+         # /dev/sda jmicron_GRAID
+         for bios_raid_partition in "$bios_raid_disk"
+         do
+            bios_raid_partition_id="$( echo "$bios_raid_partition" | awk '{print $2}' )"
+            if test -b /dev/mapper/$bios_raid_partition_id
+            then
+               for bios_raid_partition_real in /dev/mapper/${bios_raid_partition_id}*
+               do
+                  if test -b ${bios_raid_partition_real}
+                  then
+                     bios_raid_partition_remove="$( echo "$bios_raid_partition" | awk '{print $1}' )"
+                     bios_raid_partition_add="${bios_raid_partition_real}"
+                     for bios_raid_partition_remove_number in ${bios_raid_partition_remove}*
+                     do
+                        [[ "$bios_raid_partition_remove_number" = "${bios_raid_partition_remove}" ]] && continue
+                        listpartitions="$( echo ${listpartitions} | sed "s|${bios_raid_partition_remove_number}||g" )"
+                     done
+                     listpartitions="$( echo ${listpartitions} | sed "s|${bios_raid_partition_remove}||g" )"
+                     if ! echo -e "${listpartitions}" | grep -q "${bios_raid_partition_add}"
+                     then
+                        listpartitions="${listpartitions} ${bios_raid_partition_add}"
+                     fi
+                  fi
+               done
+            fi
+            unset bios_raid_partition_remove bios_raid_partition_add
+         done
+         unset bios_raid_partition
+      done < /tmp/.bios_raid_list
+      rm -f /tmp/.bios_raid_list
+      listpartitions="$( echo ${listpartitions} | sed "s|/dev/mapper/${bios_raid_partition_id} ||g" )"
+      unset bios_raid_list bios_raid_partition_id
+   fi
+
+   # List all found
+   echo $listpartitions
+}
+##############################################################################
+
+$guitool --question --text=$"This is a tool for creating bootable USB sticks with Elive. You need a USB stick with a partition of at least 1 GB in size. This partition can be in vfat or ext2 format and It will be erased in order to install Elive on it. The rest of the USB can be used as a regular data storing stick. To create the appropriate partitions on a USB stick, you can use gparted. You will also need an Elive ISO file. Do you want to continue now ?" || exitme 
+
+select_partition="$( list_available_partitions | $guitool --width="300" --height="360" --list --text=$"Select the partition of your USB stick where you want to put Elive" --column=$"Partition" --column=$"Name" --column=$"Size" || echo cancel )"
+
+if [[ "$select_partition" = "cancel" ]] || [[ "$select_partition" = "" ]] ; then
+   $guitool --error --text=$"You have canceled the operation or you have selected a wrong value. exiting...""\n\nValue: ${select_partition}"
+   exitme
+fi
+echo $select_partition | grep -q "[[:digit:]]" || exitme $"The allocated space on your USB device needs to be a partition, not the entire disk."
+      
+
+$guitool --info --text=$"Please select the ISO file of Elive to use on your USB"
+select_isofile="$( $guitool --file-selection || echo cancel )"
+
+if [[ "$select_isofile" = "cancel" ]] || [[ "$select_isofile" = "" ]] ; then
+   $guitool --error --text=$"You have canceled the operation or you have selected a wrong value. exiting...""\n\nValue: ${select_isofile}"
+   exitme
+fi
+
+# files selected correctly, doing the job...
+
+if [[ -d "$tempdir" ]] ; then
+   $guitool --error --text=$"The temporary directory already exists, I can't continue. Please delete it first (root privileges might be required, which can be acquired by choosing 'Admin Mode' in the pop-up menu of your file manager - right click on a blank space between your icons).""\n\nTempdir is: ${tempdir}"
+   exitme
+fi
+
+mkdir -p "${tempdir}/iso" "${tempdir}/usb"
+
+umount "$select_partition" 2>/dev/null || true
+
+mount "$select_partition" "${tempdir}/usb" || exitme $"Problem with mounting USB partition in the temporary directory"
+
+format="$( mount | grep "${tempdir}/usb" | sed 's|^.* type ||g' | sed 's| (.*$||g' | head -1 )"
+   case $format in
+   reiserfs|ext*|jfs|*fat*|msdos)
+      true
+      ;;
+   *)
+      $guitool --warning --text=$"The format of this partition doesn't seem to be compatible. We recommend that you use fat32 (vfat), due to compatibility with all other operating systems. Do you want to continue ?" || exitme
+      ;;
+   esac
+
+mount -o loop "$select_isofile" "${tempdir}/iso" || exitme $"Problem with mounting ISO in temporary directory"
+
+
+$guitool --question --text=$"All of the data in the selected partition is going to be deleted, do you want to continue ?""\n\nPartition: $select_partition" || exitme
+
+rm -rf "${tempdir}/usb/*" || exitme $"Problem with removing the data from the USB partition"
+
+$guitool --progress --pulsate --auto-close --text=$"Copying data, please be patient..." &
+guips=$!
+cp -a "${tempdir}/iso/"* "${tempdir}/usb/" || exitme $"Problem with copying the Elive data to the USB partition"
+sync
+kill $guips || kill -9 $guips
+
+
+sync
+umount "${tempdir}/iso" || exitme $"Problem with umounting the ISO"
+
+echo grub-install --recheck --no-floppy --root-directory="${tempdir}/usb" "${select_partition%%[0-9]*}"
+grub-install --recheck --no-floppy --root-directory="${tempdir}/usb" "${select_partition%%[0-9]*}"
+
+umount "${tempdir}/usb" || exitme $"Problem with umounting the USB partition"
+
+rm -rf "${tempdir}"
+
+$guitool --info --text=$"The creation of the bootable USB with Elive was successful.
+You can use it now by booting your computer from USB device - pressing the boot device select key in the first few seconds after the startup of your computer and selecting the USB device to boot from.
+
+Normally your BIOS would show a message saying something like:"" F12: Boot select""\n\n"$"This key is normally F12, F8, F10, F2, ESC, or something similar"
+
+$guitool --info --text=$"Note: If you have problems booting your USB, the cause may be the need of a closer (more similar) versions of the ISO and your installed system, or you have an already updated Elive system."
+
+exit 0
+
+
+
+
+
