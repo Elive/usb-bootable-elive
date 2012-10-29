@@ -1,0 +1,9 @@
+# Can ignore specific files
+*.DS_Store
+# Use wildcards as well
+*~
+*.sw*
+*.out
+*.lock
+# debian build dirs
+debian
