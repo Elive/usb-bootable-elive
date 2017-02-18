@@ -66,4 +66,4 @@ Exec=esu usb-bootable-elive
 Icon=gnome-dev-removable-usb
 Terminal=false
 Type=Application
-Categories=System;Settings;
+Categories=Elive
