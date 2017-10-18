@@ -1,4 +1,201 @@
 #!/bin/bash
+source /usr/lib/elive-tools/functions
+el_make_environment
+. gettext.sh
+TEXTDOMAIN="usb_bootable_elive"
+export TEXTDOMAIN
+
+# TODO:
+set -x
+
+main(){
+    # pre {{{
+    local guitool url_elive url_image_stable url_image_beta cache_dir
+
+    guitool="/usr/bin/zenity --window-icon=/usr/share/icons/gnome/256x256/apps/logo-elive.png"
+    url_elive="www.elivecd.org"
+    cache_dir="$HOME/.cache/$(basename $0)"
+
+    el_dependencies_check "dd,lynx,wget,zsync"
+
+    if ! $guitool --question --text="$( eval_gettext "This tool will create an USB bootable media that you can use for boot Elive in any computer, all the data inside the USB is going to be deleted. Do you want to continue?" )" ; then
+        exit
+    fi
+
+    mkdir -p "$cache_dir"
+    cd "$cache_dir"
+
+    # FIXME: add verifiers, el_error, etc instead of a set -e, also set -e doens't reports anything to the user to know whats going on
+    set -e
+    # }}}
+
+    # steps:
+    # download last version, or select between beta and stable
+        # use zsync if available
+    # select the usb
+    # dump
+
+    # select version {{{
+    image_stable_url="$( lynx -dump "${url_elive}/download/stable/" | grep "${url_elive}/downloads/stable/.*/\.img" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
+    image_stable_version="${image_stable_url%/*}"
+    image_stable_version="${image_stable_version##*/}"
+    image_stable_filename="${image_stable_url##*/}"
+
+    image_beta_url="$( lynx -dump "${url_elive}/download/beta/" | grep "${url_elive}/downloads/other/.*/\.img" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
+    image_beta_version="${image_beta_url%/*}"
+    image_beta_version="${image_beta_version##*/}"
+    image_beta_filename="${image_beta_url##*/}"
+
+    if [[ -n "$image_stable_url" ]] && [[ -n "$image_beta_url" ]] ; then
+        # ask version to use
+        if $guitool --question --info="$( eval_gettext "Do you want to use the last Beta version instead of the Stable?" )" ; then
+            image_url="$image_beta_url"
+            image_version="$image_beta_version"
+            image_filename="$image_beta_filename"
+        else
+            image_url="$image_stable_url"
+            image_version="$image_stable_version"
+            image_filename="$image_stable_filename"
+        fi
+
+    else
+        # only beta available
+        if [[ -z "$image_stable_url" ]] ; then
+            image_url="$image_beta_url"
+            image_version="$image_beta_version"
+            image_filename="$image_beta_filename"
+        fi
+
+        # only stable available
+        if [[ -z "$image_beta_url" ]] ; then
+            image_url="$image_stable_url"
+            image_version="$image_stable_version"
+            image_filename="$image_stable_filename"
+        fi
+    fi
+
+    # checks
+    if [[ -z "$image_url" ]] ; then
+        $guitool --error --text="$( eval_gettext "No versions of Elive for USB available found from the website." )"
+        exit
+    fi
+
+
+    # - select version }}}
+    # download images {{{
+    mkdir -p "$cache_dir/downloads"
+    cd "$cache_dir/downloads"
+
+    # download the md5
+    wget --quiet -c -nc "${image_url%.img}.md5"
+
+    if [[ -s "$image_filename" ]] ; then
+        # download ready to use
+        true
+        # TODO: check md5 to know that is valid
+        if ! md5sum -c "${image_filename%.img}.md5" ; then
+            # TODO: progress bar
+            wget --quiet -nc -c "$image_url"
+        fi
+        if ! md5sum -c "${image_filename%.img}.md5" ; then
+            rm -f "$image_filename"
+            wget --quiet -nc -c "$image_url"
+        fi
+    else
+        image_old="$( ls -1 *.img | sort -V | tail -1 )"
+
+        # re-use with zsync
+        if [[ -s "$image_old" ]] ; then
+            # use zsync
+            rm -rf old
+            mkdir -p old
+            mv * old/
+
+            # FIXME: include a progress dialog
+            # TODO: test if works with the temporal url
+            zsync -i "old/${image_old}" "${image_url}.zsync"
+
+            # FIXME: add a function to verify md5
+            # TODO: add a function to verify signature
+            if md5sum -c "${image_filename%.img}.md5" ; then
+                rm -rf old/
+            else
+                $guitool --error --text="$( eval_gettext "MD5 verification doesn't match" )"
+            fi
+        fi
+    fi
+
+    if [[ -s "$image_filename" ]] ; then
+        if ! md5sum -c "${image_filename%.img}.md5" ; then
+            rm -f "$image_filename"
+            $guitool --error --text="$( eval_gettext "MD5 verification doesn't match" )"
+            exit 1
+        fi
+    fi
+
+        # verify md5
+    # - download images }}}
+    # select device to record Elive {{{
+    local menu id_vendor
+    unset menu id_vendor
+    while read -ru 3 entry
+    do
+        part="$( echo "$entry" | awk -v FS="::" '{print $1}' )"
+        [[ ! -b "$part" ]] && continue
+        # ignore partitions (end in numbers)
+        if echo "$part" | grep -qs "[[:digit:]]$" ; then
+            continue
+        fi
+
+        if /sbin/udevadm info --query=property --name="$part" | grep -qs "ID_USB_DRIVER=usb-storage" ; then
+            # create an array for use in the menu, with one per line
+            menu+=("$( echo "$entry" | awk -v FS="::" '{print $1}' )")
+            menu+=("$( echo "$entry" | awk -v FS="::" '{print $7}' )")
+            id_vendor="$( /sbin/udevadm info --query=property --name="$part" | grep "ID_VENDOR_ID=" | sed -e 's|^.*VENDOR_ID=||g' )"
+            id_vendor="$( lsusb | grep "ID ${id_vendor}:" | sed -e "s|^.*${id_vendor}:||g" | awk '{print $2" "$3}' )"
+
+            if echo "$entry" | awk -v FS="::" '{print $5}' | grep -qsE "(no name|swap)" ; then
+                menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor}' )")
+            else
+                menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor " ("$5")"}' )")
+            fi
+        fi
+    done 3<<< "$( partitions-list --show-all --show-disks | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
+    #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
+    local message_select_usb
+    message_select_usb="$( printf "$( eval_gettext "Select the USB where to record Elive, all the data and partitions inside will be permanently deleted." )" "" )"
+
+    image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
+
+    if [[ "$image_device" = "cancel" ]] ; then
+        if $guitool --question --text="$( eval_gettext "You have not selected any device to use, do you want to exit?" )" ; then
+            exit
+        else
+            image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
+
+            if [[ "$image_device" = "cancel" ]] ; then
+                $guitool --error --text="$( eval_gettext "Aborted recording Elive to an USB." )"
+                exit
+            fi
+        fi
+    fi
+
+    # - select device to record Elive }}}
+}
+
+#
+#  MAIN
+#
+main "$@"
+
+exit #FIXME
+
+# vim: set foldmethod=marker :
+
+
+
+
+
 
 TEXTDOMAIN=usb_bootable_elive
 guitool=zenity
@@ -43,7 +240,7 @@ uuid_decode()
    echo $1 | grep -q "^/dev" && echo $1 && return
    uuid_partition="${1#UUID=}"
    uuid_partition="$(readlink /dev/disk/by-uuid/$uuid_partition 2>/dev/null )"
-   if ! [[ -z $uuid_partition ]] ; then 
+   if ! [[ -z $uuid_partition ]] ; then
        echo "/dev/${uuid_partition##*/}"
    fi
 }
@@ -125,7 +322,7 @@ get_partitions()
    if ( test -x /sbin/pvdisplay ) && ( vgchange -ay | grep -q "logical volume.*active" )
    then
       for pvname in $(pvdisplay | grep "PV Name" | sed 's|^.*/dev/|/dev/|g')
-      do 
+      do
          # remove partition of a group detected previously is if found in a lvm group
         listpartitions="$( echo ${listpartitions} | sed "s|$pvname||g" )"
       done
@@ -150,15 +347,15 @@ get_partitions()
       done
       unset dev raid
    fi
-   
+
    # RAID support (fake-raid - bios featured))
-   if ( test -x /sbin/dmraid ) && ( test -d /dev/mapper ) 
+   if ( test -x /sbin/dmraid ) && ( test -d /dev/mapper )
    then
       bios_raid_list="$(dmraid -r | sed 's|\",.*$||g' | sed 's|:\ .*\"| |g')"
       echo "$bios_raid_list" > /tmp/.bios_raid_list
       while read -r bios_raid_disk
       do
-         # RESULTS: 
+         # RESULTS:
          # /dev/sdb jmicron_GRAID
          # /dev/sda jmicron_GRAID
          for bios_raid_partition in "$bios_raid_disk"
@@ -199,7 +396,7 @@ get_partitions()
 }
 ##############################################################################
 
-$guitool --question --text=$"This is a tool for creating bootable USB sticks with Elive. You need a USB stick with a partition of at least 1 GB in size. This partition can be in vfat or ext2 format and It will be erased in order to install Elive on it. The rest of the USB can be used as a regular data storing stick. To create the appropriate partitions on a USB stick, you can use gparted. You will also need an Elive ISO file. Do you want to continue now ?" || exitme 
+$guitool --question --text=$"This is a tool for creating bootable USB sticks with Elive. You need a USB stick with a partition of at least 1 GB in size. This partition can be in vfat or ext2 format and It will be erased in order to install Elive on it. The rest of the USB can be used as a regular data storing stick. To create the appropriate partitions on a USB stick, you can use gparted. You will also need an Elive ISO file. Do you want to continue now ?" || exitme
 
 select_partition="$( list_available_partitions | $guitool --width="300" --height="360" --list --text=$"Select the partition of your USB stick where you want to put Elive" --column=$"Partition" --column=$"Name" --column=$"Size" || echo cancel )"
 
@@ -208,7 +405,7 @@ if [[ "$select_partition" = "cancel" ]] || [[ "$select_partition" = "" ]] ; then
    exitme
 fi
 echo $select_partition | grep -q "[[:digit:]]" || exitme $"The allocated space on your USB device needs to be a partition, not the entire disk."
-      
+
 
 $guitool --info --text=$"Please select the ISO file of Elive to use on your USB"
 select_isofile="$( $guitool --file-selection || echo cancel )"
