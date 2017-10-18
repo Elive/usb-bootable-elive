@@ -10,7 +10,7 @@ url_elive="www.elivecd.org"
 url_isos="isos.elivecd.org"
 TMP_MAIN_d="/tmp/.$(basename $0)-${USER}"
 TMP_PROGRESS_WORKING_f="${TMP_MAIN_d}/progress-file-working"
-wgetopts="--quiet -nc --tries=4 --progress=bar:force"
+wgetopts="--tries=5 --progress=dot:binary -c"
 
 # TODO:
 set -x
@@ -125,7 +125,7 @@ guitool(){
                 esac
             fi
 
-            { ( while test -s "$TMP_PROGRESS_WORKING_f" ; do echo 10 ; cat "$TMP_PROGRESS_CONFIGURING_f" || true ; sleep 1 ; done | $guitool --progress --text="$message_doing_magic" --pulsate --auto-close ) & disown ; } 2>/dev/null
+            { ( while test -s "$TMP_PROGRESS_WORKING_f" ; do echo 10 ; cat "$TMP_PROGRESS_WORKING_f" || true ; sleep 1 ; done | $guitool --progress --text="$message_doing_magic" --pulsate --auto-close ) & disown ; } 2>/dev/null
 
             ;;
         working_stop)
@@ -226,28 +226,27 @@ main(){
     mkdir -p "$cache_dir/downloads/${image_subdir}/${image_extension}"
     cd "$cache_dir/downloads/${image_subdir}/${image_extension}"
 
+    image_md5="${image_filename%.*}.md5"
+    rm -f "$image_md5"
+
     # download the md5
     case "$image_extension" in
         img)
-            wget $wgetopts -c "${url_isos}/${image_subdir}/${image_filename%.img}.md5"
+            wget $wgetopts --quiet "${url_isos}/${image_subdir}/${image_filename%.img}.md5"
             ;;
         iso)
-            wget $wgetopts -c "${url_isos}/${image_subdir}/${image_filename%.iso}.md5"
+            wget $wgetopts --quiet "${url_isos}/${image_subdir}/${image_filename%.iso}.md5"
             ;;
     esac
-    image_md5="${image_filename%.*}.md5"
 
     if [[ -s "$image_filename" ]] ; then
         # download ready to use
-        true
         # TODO: check md5 to know that is valid
+        guitool working_start
         if ! md5sum -c "${image_md5}" ; then
-            # TODO: progress bar
-            wget $wgetopts -c "$image_url"
+            is_redownload_wanted=1
         fi
-        if ! md5sum -c "${image_md5}" ; then
-            rm -f "$image_filename"
-        fi
+        guitool working_stop
     else
         image_old="$( ls -1 *.img 2>/dev/null | sort -V | tail -1 )"
 
@@ -264,26 +263,44 @@ main(){
 
             # FIXME: add a function to verify md5
             # TODO: add a function to verify signature
+            guitool working_start
             if md5sum -c "${image_md5}" ; then
                 rm -rf old/
             else
                 guitool error "$( eval_gettext "MD5 verification doesn't match" )"
             fi
+            guitool working_stop
         fi
     fi
 
     # we don't have it, nor zsynced, download it
-    if ! [[ -s "$image_filename" ]] ; then
+    if ! [[ -s "$image_filename" ]] || ((is_redownload_wanted)) ; then
         # TODO: catch errors, like not enough free space?
-        wget $wgetopts -c "$image_url"
+        LC_ALL=C wget $wgetopts "$image_url" 1>"$TMP_PROGRESS_WORKING_f" 2>&1 &
+        wget_pid="$!"
+
+        while kill -0 "$wget_pid"
+        do
+            cat "$TMP_PROGRESS_WORKING_f"
+            sleep 5
+        done | $guitool --progress --auto-close --text="$( eval_gettext "Downloading Elive, please be patient..." )"
+
+        # TODO:
+        guitool working_start
+        if ! md5sum -c "${image_md5}" ; then
+            rm -f "$image_filename"
+        fi
+        guitool working_stop
     fi
 
     if [[ -s "$image_filename" ]] ; then
+        guitool working_start
         if ! md5sum -c "${image_md5}" ; then
             rm -f "$image_filename"
             guitool error "$( eval_gettext "MD5 verification doesn't match" )"
             exit 1
         fi
+        guitool working_stop
     fi
 
         # verify md5
@@ -327,7 +344,10 @@ main(){
     # - select device to record Elive }}}
 
     if [[ -s "$image_filename" ]] ; then
-        guitool working_start
+        local message_recording
+        message_recording="$( printf "$( eval_gettext "Recording Elive to your %s device" )" "$image_device" )"
+
+        guitool working_start "$message_recording"
         echo dd if="$image_filename" of="$image_device" bs=8M
         guitool working_stop
     fi
