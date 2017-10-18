@@ -5,28 +5,132 @@ el_make_environment
 TEXTDOMAIN="usb_bootable_elive"
 export TEXTDOMAIN
 
+guitool="/usr/bin/zenity --window-icon=/usr/share/icons/gnome/256x256/apps/logo-elive.png"
+url_elive="www.elivecd.org"
+url_isos="isos.elivecd.org"
+TMP_MAIN_d="/tmp/.$(basename $0)-${USER}"
+TMP_PROGRESS_WORKING_f="${TMP_MAIN_d}/progress-file-working"
+
 # TODO:
 set -x
 # FIXME: add verifiers, el_error, etc instead of a set -e, also set -e doens't reports anything to the user to know whats going on
 set -e
 
+#===  FUNCTION  ================================================================
+#          NAME:  guitool
+#   DESCRIPTION:  small tool for interact with the user graphically
+#    PARAMETERS:  $1 = mode, $2 = message, $3 = "%s" equivalent vars for $2
+#       RETURNS:  value, if needed
+#===============================================================================
+guitool(){
+    # pre {{{
+    local mode message
+    #el_debug
+
+    mode="$1"
+    message="$2"
+
+    el_check_variables "mode,guitool"
+
+    #el_debug "    $FUNCNAME $@"
+
+    # }}}
+
+    # This is not going to work here because gettext is unable to get the messages from a dynamic variable
+    #    local _translated_message
+    #    _translated_message="$( printf "$( eval_gettext "$message" )" "$@" )"
+
+    case "$mode" in
+        info)
+            guitool working_stop
+            el_check_variables "message"
+            $guitool --info --text="$message"
+
+            ;;
+        error)
+            guitool working_stop
+            el_check_variables "message"
+            $guitool --error --text="$message"
+
+            ;;
+        warning)
+            guitool working_stop
+            el_check_variables "message"
+            $guitool --warning --text="$message"
+
+            ;;
+        working_start)
+            # already running? keep it running instead of creating a new one
+            if [[ -s "$TMP_PROGRESS_WORKING_f" ]] || ((is_guitool_working_running)) ; then
+                return
+            fi
+
+            echo working > "$TMP_PROGRESS_WORKING_f"
+            sync
+            is_guitool_working_running=1
+
+
+            if [[ -n "$message" ]] ; then
+                message_doing_magic="$message"
+            else
+                # random message generator
+                message_doing_magic="$( eval_gettext "Elive is doing some magic..." )"
+                # random message generator
+                case "$( shuf -i 1-5 -n 1 )" in
+                    1)
+                        message_doing_magic="$( eval_gettext "Elive is doing some magic..." )"
+                        ;;
+                    2)
+                        message_doing_magic="$( eval_gettext "Transferring bytes at the speed of light..." )"
+                        ;;
+                    3)
+                        message_doing_magic="$( eval_gettext "Arranging some atoms in the universe..." )"
+                        ;;
+                    4)
+                        message_doing_magic="$( eval_gettext "Mutating frogs with unicorns..." )"
+                        ;;
+                    5)
+                        message_doing_magic="Dancing 'Staying Elive' by the Bee Gees..."
+                        ;;
+                esac
+            fi
+
+            { ( while test -s "$TMP_PROGRESS_WORKING_f" ; do echo 10 ; cat "$TMP_PROGRESS_CONFIGURING_f" || true ; sleep 1 ; done | $guitool --progress --text="$message_doing_magic" --pulsate --auto-close ) & disown ; } 2>/dev/null
+
+            ;;
+        working_stop)
+            rm -f "$TMP_PROGRESS_WORKING_f"
+            unset is_guitool_working_running
+
+            ;;
+        question)
+            guitool working_stop
+            el_check_variables "message"
+
+            if $guitool --question --text="$message" ; then
+                return 0
+            else
+                return 1
+            fi
+
+            ;;
+    esac
+}
+
 main(){
     # pre {{{
-    local guitool url_elive url_image_stable url_image_beta cache_dir
+    local url_elive url_image_stable url_image_beta cache_dir
 
-    guitool="/usr/bin/zenity --window-icon=/usr/share/icons/gnome/256x256/apps/logo-elive.png"
-    url_elive="www.elivecd.org"
-    url_isos="isos.elivecd.org"
     cache_dir="$HOME/.cache/$(basename $0)"
 
     el_dependencies_check "dd,lynx,wget,zsync"
 
-    if ! $guitool --question --text="$( eval_gettext "This tool will create an USB bootable media that you can use for boot Elive in any computer, all the data inside the USB is going to be deleted. Do you want to continue?" )" ; then
+    if ! guitool question "$( eval_gettext "This tool will create an USB bootable media that you can use for boot Elive in any computer, all the data inside the USB is going to be deleted. Do you want to continue?" )" ; then
         exit
     fi
 
     # TODO: betatest it!
-    if $guitool --question --text="$( eval_gettext "Do you want to use the IMG version? it will feature persistence, but the ISO version can be compatible in other rare hardware." )" ; then
+    if guitool question "$( eval_gettext "Do you want to use the IMG version? it will feature persistence, but the ISO version can be compatible in other rare hardware." )" ; then
         image_extension="img"
     else
         image_extension="iso"
@@ -56,7 +160,7 @@ main(){
 
     if [[ -n "$image_stable_url" ]] && [[ -n "$image_beta_url" ]] ; then
         # ask version to use
-        if $guitool --question --info="$( eval_gettext "Do you want to use the last Beta version instead of the Stable?" )" ; then
+        if guitool question "$( eval_gettext "Do you want to use the last Beta version instead of the Stable?" )" ; then
             image_url="$image_beta_url"
             image_version="$image_beta_version"
             image_filename="$image_beta_filename"
@@ -88,7 +192,7 @@ main(){
 
     # checks
     if [[ -z "$image_url" ]] ; then
-        $guitool --error --text="$( eval_gettext "No versions of Elive for USB available found from the website." )"
+        guitool error "$( eval_gettext "No versions of Elive for USB available found from the website." )"
         exit
     fi
 
@@ -140,7 +244,7 @@ main(){
             if md5sum -c "${image_md5}" ; then
                 rm -rf old/
             else
-                $guitool --error --text="$( eval_gettext "MD5 verification doesn't match" )"
+                guitool error "$( eval_gettext "MD5 verification doesn't match" )"
             fi
         fi
     fi
@@ -148,7 +252,7 @@ main(){
     if [[ -s "$image_filename" ]] ; then
         if ! md5sum -c "${image_md5}" ; then
             rm -f "$image_filename"
-            $guitool --error --text="$( eval_gettext "MD5 verification doesn't match" )"
+            guitool error "$( eval_gettext "MD5 verification doesn't match" )"
             exit 1
         fi
     fi
@@ -188,13 +292,13 @@ main(){
     image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
 
     if [[ "$image_device" = "cancel" ]] ; then
-        if $guitool --question --text="$( eval_gettext "You have not selected any device to use, do you want to exit?" )" ; then
+        if guitool question "$( eval_gettext "You have not selected any device to use, do you want to exit?" )" ; then
             exit
         else
             image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
 
             if [[ "$image_device" = "cancel" ]] ; then
-                $guitool --error --text="$( eval_gettext "Aborted recording Elive to an USB." )"
+                guitool error "$( eval_gettext "Aborted recording Elive to an USB." )"
                 exit
             fi
         fi
