@@ -249,7 +249,7 @@ main(){
             wget --quiet -nc -c "$image_url"
         fi
     else
-        image_old="$( ls -1 *.img | sort -V | tail -1 )"
+        image_old="$( ls -1 *.img 2>/dev/null | sort -V | tail -1 )"
 
         # re-use with zsync
         if [[ -s "$image_old" ]] ; then
@@ -270,6 +270,11 @@ main(){
                 guitool error "$( eval_gettext "MD5 verification doesn't match" )"
             fi
         fi
+    fi
+
+    # we don't have it, nor zsynced, download it
+    if ! [[ -s "$image_filename" ]] ; then
+        wget --quiet -nc -c "$image_url"
     fi
 
     if [[ -s "$image_filename" ]] ; then
