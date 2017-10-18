@@ -23,7 +23,7 @@ main(){
     fi
 
     # TODO: betatest it!
-    if $guitool --question --text="$( eval_gettext "Do you want to use the IMG version? it will feature persistence, but the ISO version can be compatible in some rare hardware." )" ; then
+    if $guitool --question --text="$( eval_gettext "Do you want to use the IMG version? it will feature persistence, but the ISO version can be compatible in other rare hardware." )" ; then
         image_extension="img"
     else
         image_extension="iso"
@@ -43,12 +43,12 @@ main(){
     # dump
 
     # select version {{{
-    image_stable_url="$( lynx -dump "${url_elive}/download/stable/" | grep "${url_elive}/downloads/stable/.*/\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
+    image_stable_url="$( lynx -dump "${url_elive}/download/stable/" | grep "${url_elive}/downloads/stable/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
     image_stable_version="${image_stable_url%/*}"
     image_stable_version="${image_stable_version##*/}"
     image_stable_filename="${image_stable_url##*/}"
 
-    image_beta_url="$( lynx -dump "${url_elive}/download/beta/" | grep "${url_elive}/downloads/other/.*/\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
+    image_beta_url="$( lynx -dump "${url_elive}/download/beta/" | grep "${url_elive}/downloads/other/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
     image_beta_version="${image_beta_url%/*}"
     image_beta_version="${image_beta_version##*/}"
     image_beta_filename="${image_beta_url##*/}"
