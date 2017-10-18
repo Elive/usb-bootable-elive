@@ -19,6 +19,7 @@ set -e
 
 # this function generates the menu with the USB device to select
 generate_menu_selector(){
+    # build menu variable from partitions list {{{
     #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
     unset menu id_vendor
     while read -ru 3 entry
@@ -44,6 +45,7 @@ generate_menu_selector(){
             fi
         fi
     done 3<<< "$( partitions-list --show-all --show-disks | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
+    # }}}
 }
 
 #===  FUNCTION  ================================================================
@@ -65,7 +67,7 @@ guitool(){
     #el_debug "    $FUNCNAME $@"
 
     # }}}
-
+    # functions {{{
     # This is not going to work here because gettext is unable to get the messages from a dynamic variable
     #    local _translated_message
     #    _translated_message="$( printf "$( eval_gettext "$message" )" "$@" )"
@@ -145,6 +147,7 @@ guitool(){
 
             ;;
     esac
+    # }}}
 }
 
 main(){
@@ -281,7 +284,7 @@ main(){
 
         while kill -0 "$wget_pid"
         do
-            cat "$TMP_PROGRESS_WORKING_f"
+            cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g'
             sleep 5
         done | $guitool --progress --auto-close --text="$( eval_gettext "Downloading Elive, please be patient..." )"
 
@@ -343,6 +346,7 @@ main(){
 
     # - select device to record Elive }}}
 
+    # record Elive to device {{{
     if [[ -s "$image_filename" ]] ; then
         local message_recording
         message_recording="$( printf "$( eval_gettext "Recording Elive to your %s device" )" "$image_device" )"
@@ -354,7 +358,8 @@ main(){
 
     guitool info "$( eval_gettext "Congratulations, your USB is ready to be used in any computer! Remember that some newer computers requires to disable the UEFI and Secure Boot modes, you can found more info about this on the Elive website." )"
 
-    # delete images if low space {{{
+    # }}}
+    # delete cache if low space {{{
     free_space="$( LC_ALL=C df -BM | awk '{if ($6 == "/home") print $4}' | sed -e 's|M$||g' | tail -1 )"
     if [[ -z "$free_space" ]] ; then
         free_space="$( LC_ALL=C df -BM | awk '{if ($6 == "/") print $4}' | sed -e 's|M$||g' | tail -1 )"
