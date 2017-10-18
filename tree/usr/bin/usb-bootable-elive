@@ -10,6 +10,7 @@ url_elive="www.elivecd.org"
 url_isos="isos.elivecd.org"
 TMP_MAIN_d="/tmp/.$(basename $0)-${USER}"
 TMP_PROGRESS_WORKING_f="${TMP_MAIN_d}/progress-file-working"
+wgetopts="--quiet -nc --tries=4 --progress=bar:force"
 
 # TODO:
 set -x
@@ -228,10 +229,10 @@ main(){
     # download the md5
     case "$image_extension" in
         img)
-            wget --quiet -c -nc "${url_isos}/${image_subdir}/${image_filename%.img}.md5"
+            wget $wgetopts -c "${url_isos}/${image_subdir}/${image_filename%.img}.md5"
             ;;
         iso)
-            wget --quiet -c -nc "${url_isos}/${image_subdir}/${image_filename%.iso}.md5"
+            wget $wgetopts -c "${url_isos}/${image_subdir}/${image_filename%.iso}.md5"
             ;;
     esac
     image_md5="${image_filename%.*}.md5"
@@ -242,11 +243,10 @@ main(){
         # TODO: check md5 to know that is valid
         if ! md5sum -c "${image_md5}" ; then
             # TODO: progress bar
-            wget --quiet -nc -c "$image_url"
+            wget $wgetopts -c "$image_url"
         fi
         if ! md5sum -c "${image_md5}" ; then
             rm -f "$image_filename"
-            wget --quiet -nc -c "$image_url"
         fi
     else
         image_old="$( ls -1 *.img 2>/dev/null | sort -V | tail -1 )"
@@ -274,7 +274,8 @@ main(){
 
     # we don't have it, nor zsynced, download it
     if ! [[ -s "$image_filename" ]] ; then
-        wget --quiet -nc -c "$image_url"
+        # TODO: catch errors, like not enough free space?
+        wget $wgetopts -c "$image_url"
     fi
 
     if [[ -s "$image_filename" ]] ; then
