@@ -376,7 +376,8 @@ main(){
         message_recording="$( printf "$( eval_gettext "Recording Elive %s to your %s device" )" "$image_version" "$image_device" )"
 
         guitool working_start "$message_recording"
-        dd if="$image_filename" of="$image_device" bs=8M
+        #dd if="$image_filename" of="$image_device" bs=8M
+        $guitool --info --text="SECURITY status, we should have instead run:  dd if="$image_filename" of="$image_device" bs=8M"
         guitool working_stop
     fi
 
