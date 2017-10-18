@@ -16,6 +16,35 @@ set -x
 # FIXME: add verifiers, el_error, etc instead of a set -e, also set -e doens't reports anything to the user to know whats going on
 set -e
 
+# this function generates the menu with the USB device to select
+generate_menu_selector(){
+    #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
+    unset menu id_vendor
+    while read -ru 3 entry
+    do
+        part="$( echo "$entry" | awk -v FS="::" '{print $1}' )"
+        [[ ! -b "$part" ]] && continue
+        # ignore partitions (end in numbers)
+        if echo "$part" | grep -qs "[[:digit:]]$" ; then
+            continue
+        fi
+
+        if /sbin/udevadm info --query=property --name="$part" | grep -qs "ID_USB_DRIVER=usb-storage" ; then
+            # create an array for use in the menu, with one per line
+            menu+=("$( echo "$entry" | awk -v FS="::" '{print $1}' )")
+            menu+=("$( echo "$entry" | awk -v FS="::" '{print $7}' )")
+            id_vendor="$( /sbin/udevadm info --query=property --name="$part" | grep "ID_VENDOR_ID=" | sed -e 's|^.*VENDOR_ID=||g' )"
+            id_vendor="$( lsusb | grep "ID ${id_vendor}:" | sed -e "s|^.*${id_vendor}:||g" | awk '{print $2" "$3}' )"
+
+            if echo "$entry" | awk -v FS="::" '{print $5}' | grep -qsE "(no name|swap)" ; then
+                menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor}' )")
+            else
+                menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor " ("$5")"}' )")
+            fi
+        fi
+    done 3<<< "$( partitions-list --show-all --show-disks | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
+}
+
 #===  FUNCTION  ================================================================
 #          NAME:  guitool
 #   DESCRIPTION:  small tool for interact with the user graphically
@@ -254,61 +283,13 @@ main(){
         # verify md5
     # - download images }}}
     # select device to record Elive {{{
-    #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
-    unset menu id_vendor
-    while read -ru 3 entry
-    do
-        part="$( echo "$entry" | awk -v FS="::" '{print $1}' )"
-        [[ ! -b "$part" ]] && continue
-        # ignore partitions (end in numbers)
-        if echo "$part" | grep -qs "[[:digit:]]$" ; then
-            continue
-        fi
-
-        if /sbin/udevadm info --query=property --name="$part" | grep -qs "ID_USB_DRIVER=usb-storage" ; then
-            # create an array for use in the menu, with one per line
-            menu+=("$( echo "$entry" | awk -v FS="::" '{print $1}' )")
-            menu+=("$( echo "$entry" | awk -v FS="::" '{print $7}' )")
-            id_vendor="$( /sbin/udevadm info --query=property --name="$part" | grep "ID_VENDOR_ID=" | sed -e 's|^.*VENDOR_ID=||g' )"
-            id_vendor="$( lsusb | grep "ID ${id_vendor}:" | sed -e "s|^.*${id_vendor}:||g" | awk '{print $2" "$3}' )"
-
-            if echo "$entry" | awk -v FS="::" '{print $5}' | grep -qsE "(no name|swap)" ; then
-                menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor}' )")
-            else
-                menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor " ("$5")"}' )")
-            fi
-        fi
-    done 3<<< "$( partitions-list --show-all --show-disks | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
+    generate_menu_selector
 
     # not inserted ? do it!
     if [[ "${#menu[@]}" -lt 3 ]] ; then
         guitool info "$( eval_gettext "Please insert the USB where to record Elive before to continue." )"
 
-        #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
-        unset menu id_vendor
-        while read -ru 3 entry
-        do
-            part="$( echo "$entry" | awk -v FS="::" '{print $1}' )"
-            [[ ! -b "$part" ]] && continue
-            # ignore partitions (end in numbers)
-            if echo "$part" | grep -qs "[[:digit:]]$" ; then
-                continue
-            fi
-
-            if /sbin/udevadm info --query=property --name="$part" | grep -qs "ID_USB_DRIVER=usb-storage" ; then
-                # create an array for use in the menu, with one per line
-                menu+=("$( echo "$entry" | awk -v FS="::" '{print $1}' )")
-                menu+=("$( echo "$entry" | awk -v FS="::" '{print $7}' )")
-                id_vendor="$( /sbin/udevadm info --query=property --name="$part" | grep "ID_VENDOR_ID=" | sed -e 's|^.*VENDOR_ID=||g' )"
-                id_vendor="$( lsusb | grep "ID ${id_vendor}:" | sed -e "s|^.*${id_vendor}:||g" | awk '{print $2" "$3}' )"
-
-                if echo "$entry" | awk -v FS="::" '{print $5}' | grep -qsE "(no name|swap)" ; then
-                    menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor}' )")
-                else
-                    menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor " ("$5")"}' )")
-                fi
-            fi
-        done 3<<< "$( partitions-list --show-all --show-disks | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
+        generate_menu_selector
     fi
 
     if [[ "${#menu[@]}" -lt 3 ]] ; then
@@ -326,6 +307,8 @@ main(){
         if guitool question "$( eval_gettext "You have not selected any device to use, do you want to exit?" )" ; then
             exit
         else
+            generate_menu_selector
+
             image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
 
             if [[ "$image_device" = "cancel" ]] ; then
