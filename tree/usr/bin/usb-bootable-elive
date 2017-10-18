@@ -119,7 +119,7 @@ guitool(){
 
 main(){
     # pre {{{
-    local url_elive url_image_stable url_image_beta cache_dir
+    local url_elive url_image_stable url_image_beta cache_dir menu id_vendor
 
     cache_dir="$HOME/.cache/$(basename $0)"
 
@@ -140,12 +140,6 @@ main(){
     cd "$cache_dir"
 
     # }}}
-
-    # steps:
-    # download last version, or select between beta and stable
-        # use zsync if available
-    # select the usb
-    # dump
 
     # select version {{{
     image_stable_url="$( lynx -dump "${url_elive}/download/stable/" | grep "${url_elive}/downloads/stable/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
@@ -260,7 +254,7 @@ main(){
         # verify md5
     # - download images }}}
     # select device to record Elive {{{
-    local menu id_vendor
+    #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
     unset menu id_vendor
     while read -ru 3 entry
     do
@@ -285,7 +279,44 @@ main(){
             fi
         fi
     done 3<<< "$( partitions-list --show-all --show-disks | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
-    #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
+
+    # not inserted ? do it!
+    if [[ "${#menu[@]}" -lt 3 ]] ; then
+        guitool info "$( eval_gettext "Please insert the USB where to record Elive before to continue." )"
+
+        #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
+        unset menu id_vendor
+        while read -ru 3 entry
+        do
+            part="$( echo "$entry" | awk -v FS="::" '{print $1}' )"
+            [[ ! -b "$part" ]] && continue
+            # ignore partitions (end in numbers)
+            if echo "$part" | grep -qs "[[:digit:]]$" ; then
+                continue
+            fi
+
+            if /sbin/udevadm info --query=property --name="$part" | grep -qs "ID_USB_DRIVER=usb-storage" ; then
+                # create an array for use in the menu, with one per line
+                menu+=("$( echo "$entry" | awk -v FS="::" '{print $1}' )")
+                menu+=("$( echo "$entry" | awk -v FS="::" '{print $7}' )")
+                id_vendor="$( /sbin/udevadm info --query=property --name="$part" | grep "ID_VENDOR_ID=" | sed -e 's|^.*VENDOR_ID=||g' )"
+                id_vendor="$( lsusb | grep "ID ${id_vendor}:" | sed -e "s|^.*${id_vendor}:||g" | awk '{print $2" "$3}' )"
+
+                if echo "$entry" | awk -v FS="::" '{print $5}' | grep -qsE "(no name|swap)" ; then
+                    menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor}' )")
+                else
+                    menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor " ("$5")"}' )")
+                fi
+            fi
+        done 3<<< "$( partitions-list --show-all --show-disks | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
+    fi
+
+    if [[ "${#menu[@]}" -lt 3 ]] ; then
+        guitool error "$( eval_gettext "No USB devices found. Aborted." )"
+        exit
+    fi
+
+
     local message_select_usb
     message_select_usb="$( printf "$( eval_gettext "Select the USB where to record Elive, all the data and partitions inside will be permanently deleted." )" "" )"
 
