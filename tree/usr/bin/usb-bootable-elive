@@ -8,8 +8,8 @@ export TEXTDOMAIN
 guitool="/usr/bin/zenity --window-icon=/usr/share/icons/gnome/256x256/apps/logo-elive.png"
 url_elive="www.elivecd.org"
 url_isos="isos.elivecd.org"
-TMP_MAIN_d="/tmp/.$(basename $0)-${USER}"
-TMP_PROGRESS_WORKING_f="${TMP_MAIN_d}/progress-file-working"
+cache_dir="$HOME/.cache/$(basename $0)"
+TMP_PROGRESS_WORKING_f="${cache_dir}/progress-file-working"
 wgetopts="--tries=5 --progress=dot:binary -c"
 
 # TODO:
@@ -152,9 +152,8 @@ guitool(){
 
 main(){
     # pre {{{
-    local url_image_stable url_image_beta cache_dir menu id_vendor
+    local url_image_stable url_image_beta menu id_vendor
 
-    cache_dir="$HOME/.cache/$(basename $0)"
 
     el_dependencies_check "dd,lynx,wget,zsync"
 
@@ -175,6 +174,8 @@ main(){
     # }}}
 
     # select version {{{
+    guitool working_start
+
     image_stable_url="$( lynx -dump "${url_elive}/download/stable/" | grep "${url_elive}/downloads/stable/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
     image_stable_version="${image_stable_url%/*}"
     image_stable_version="${image_stable_version##*/}"
@@ -223,6 +224,13 @@ main(){
         exit
     fi
 
+    # get redirector, specially needed for zsync to work
+    guitool working_start
+    _image_url="$( LC_ALL=C timeout 10 wget --verbose "$image_url" -O /dev/null 2>&1 | grep -i "Location:.*following" | sed -e 's|^Location: ||g' -e 's|\[follow.*$||g' )"
+    if [[ "$_image_url" = http* ]] ;  then
+        image_url="$_image_url"
+    fi
+
 
     # - select version }}}
     # download images {{{
@@ -260,13 +268,26 @@ main(){
             mkdir -p old
             mv * old/
 
-            # FIXME: include a progress dialog
             # TODO: test if works with the temporal url
-            zsync -i "old/${image_old}" "${image_url}.zsync"
+            zsync -i "old/${image_old}" "${image_url}.zsync" 1>"$TMP_PROGRESS_WORKING_f" &
+            pid="$!"
 
-            # FIXME: add a function to verify md5
+            local message_downloading
+            message_downloading="$( printf "$( eval_gettext "Synchronizing to Elive %s, please be patient..." )" "$image_version" )"
+
+            while kill -0 "$pid"
+            do
+                progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' )"
+                if [[ "$progress" = 100 ]] ; then
+                    echo "$progress"
+                else
+                    echo "$(( $progress - 10 ))"
+                fi
+                sleep 5
+            done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )"
+
             # TODO: add a function to verify signature
-            guitool working_start
+            #guitool working_start
             if md5sum -c "${image_md5}" ; then
                 rm -rf old/
             else
@@ -280,13 +301,16 @@ main(){
     if ! [[ -s "$image_filename" ]] || ((is_redownload_wanted)) ; then
         # TODO: catch errors, like not enough free space?
         LC_ALL=C wget $wgetopts "$image_url" 1>"$TMP_PROGRESS_WORKING_f" 2>&1 &
-        wget_pid="$!"
+        pid="$!"
 
-        while kill -0 "$wget_pid"
+        local message_downloading
+        message_downloading="$( printf "$( eval_gettext "Downloading Elive %s, please be patient..." )" "$image_version" )"
+
+        while kill -0 "$pid"
         do
-            cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g'
+            cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g'
             sleep 5
-        done | $guitool --progress --auto-close --text="$( eval_gettext "Downloading Elive, please be patient..." )"
+        done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )"
 
         # TODO:
         guitool working_start
@@ -349,10 +373,10 @@ main(){
     # record Elive to device {{{
     if [[ -s "$image_filename" ]] ; then
         local message_recording
-        message_recording="$( printf "$( eval_gettext "Recording Elive to your %s device" )" "$image_device" )"
+        message_recording="$( printf "$( eval_gettext "Recording Elive %s to your %s device" )" "$image_version" "$image_device" )"
 
         guitool working_start "$message_recording"
-        echo dd if="$image_filename" of="$image_device" bs=8M
+        dd if="$image_filename" of="$image_device" bs=8M
         guitool working_stop
     fi
 
