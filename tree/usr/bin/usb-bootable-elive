@@ -7,6 +7,8 @@ export TEXTDOMAIN
 
 # TODO:
 set -x
+# FIXME: add verifiers, el_error, etc instead of a set -e, also set -e doens't reports anything to the user to know whats going on
+set -e
 
 main(){
     # pre {{{
@@ -14,6 +16,7 @@ main(){
 
     guitool="/usr/bin/zenity --window-icon=/usr/share/icons/gnome/256x256/apps/logo-elive.png"
     url_elive="www.elivecd.org"
+    url_isos="isos.elivecd.org"
     cache_dir="$HOME/.cache/$(basename $0)"
 
     el_dependencies_check "dd,lynx,wget,zsync"
@@ -32,8 +35,6 @@ main(){
     mkdir -p "$cache_dir"
     cd "$cache_dir"
 
-    # FIXME: add verifiers, el_error, etc instead of a set -e, also set -e doens't reports anything to the user to know whats going on
-    set -e
     # }}}
 
     # steps:
@@ -59,10 +60,12 @@ main(){
             image_url="$image_beta_url"
             image_version="$image_beta_version"
             image_filename="$image_beta_filename"
+            image_subdir="development"
         else
             image_url="$image_stable_url"
             image_version="$image_stable_version"
             image_filename="$image_stable_filename"
+            image_subdir="stable"
         fi
 
     else
@@ -71,6 +74,7 @@ main(){
             image_url="$image_beta_url"
             image_version="$image_beta_version"
             image_filename="$image_beta_filename"
+            image_subdir="development"
         fi
 
         # only stable available
@@ -78,6 +82,7 @@ main(){
             image_url="$image_stable_url"
             image_version="$image_stable_version"
             image_filename="$image_stable_filename"
+            image_subdir="stable"
         fi
     fi
 
@@ -96,10 +101,10 @@ main(){
     # download the md5
     case "$image_extension" in
         img)
-            wget --quiet -c -nc "${image_url%.img}.md5"
+            wget --quiet -c -nc "${url_isos}/${image_subdir}/${image_filename%.img}.md5"
             ;;
         iso)
-            wget --quiet -c -nc "${image_url%.iso}.md5"
+            wget --quiet -c -nc "${url_isos}/${image_subdir}/${image_filename%.iso}.md5"
             ;;
     esac
     image_md5="${image_filename%.*}.md5"
