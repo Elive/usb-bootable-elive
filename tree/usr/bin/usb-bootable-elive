@@ -148,7 +148,7 @@ guitool(){
 
 main(){
     # pre {{{
-    local url_elive url_image_stable url_image_beta cache_dir menu id_vendor
+    local url_image_stable url_image_beta cache_dir menu id_vendor
 
     cache_dir="$HOME/.cache/$(basename $0)"
 
