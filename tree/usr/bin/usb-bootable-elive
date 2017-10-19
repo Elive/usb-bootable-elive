@@ -11,6 +11,7 @@ cache_dir="$HOME/.cache/$(basename $0)"
 TMP_PROGRESS_WORKING_f="${cache_dir}/progress-file-working"
 TMP_ERROR_LOGS_f="${cache_dir}/logs-error.txt"
 wgetopts="--tries=40 --progress=dot:binary -c"
+set -E
 
 # Lock system (good one) {{{
 lockfile="/tmp/.$(basename $0)-${USER}.lock"
