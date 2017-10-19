@@ -271,6 +271,7 @@ main(){
         # checks
         if [[ -z "$image_url" ]] ; then
             guitool error "$( eval_gettext "No versions of Elive for USB available found from the website." )"
+            el_error "no versions found on the website"
             exit 1
         fi
 
@@ -361,6 +362,7 @@ main(){
                     rm -rf old/
                 else
                     guitool error "$( eval_gettext "MD5 verification doesn't match" )"
+                    el_error "md5 verification failed"
                     exit 1
                 fi
                 guitool working_stop
@@ -399,6 +401,7 @@ main(){
             else
                 rm -f "$image_filename"
                 guitool error "$( eval_gettext "MD5 verification doesn't match" )"
+                el_error "md5 verification failed"
                 exit 1
             fi
             guitool working_stop
@@ -406,6 +409,7 @@ main(){
 
         if ! ((is_checksum_ok)) ; then
             guitool error "$( eval_gettext "Integrity not verified correctly." )"
+            el_error "integrity has not been verified"
             exit 1
         fi
     fi
@@ -423,6 +427,7 @@ main(){
     fi
 
     if [[ "${#menu[@]}" -lt 3 ]] ; then
+        el_error "no candidates found for USB devices"
         exit 1
     fi
 
@@ -441,6 +446,7 @@ main(){
             image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
 
             if [[ "$image_device" = "cancel" ]] || [[ -z "$image_device" ]] || [[ ! -b "$image_device" ]] ; then
+                el_error "wrong device selected: $image_device"
                 exit 1
             fi
         fi
@@ -456,6 +462,7 @@ main(){
         guitool working_start "$message_recording"
         if ! dd if="$image_filename" of="$image_device" bs=8M ; then
             guitool error "$( eval_gettext "Error recording USB" )"
+            el_error "dd was unable to write"
             exit 1
         fi
         guitool working_stop
