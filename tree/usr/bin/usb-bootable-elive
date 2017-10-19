@@ -9,6 +9,7 @@ guitool="/usr/bin/zenity --window-icon=/usr/share/icons/gnome/256x256/apps/logo-
 url_elive="www.elivecd.org"
 cache_dir="$HOME/.cache/$(basename $0)"
 TMP_PROGRESS_WORKING_f="${cache_dir}/progress-file-working"
+TMP_ERROR_LOGS_f="${cache_dir}/logs-error.txt"
 wgetopts="--tries=40 --progress=dot:binary -c"
 
 # TODO:
@@ -28,7 +29,11 @@ exit_error(){
     guitool working_stop
     rm -f "$lockfile"
     kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null
-    guitool error "$( eval_gettext "Aborted tool for recording Elive to an USB." )"
+    if [[ -s "$TMP_ERROR_LOGS_f" ]] ; then
+        guitool error "$( eval_gettext "Aborted tool for recording Elive to an USB." )\n\n$(tail -2 "$TMP_ERROR_LOGS_f")"
+    else
+        guitool error "$( eval_gettext "Aborted tool for recording Elive to an USB." )"
+    fi
 }
 
 if [[ -r "$lockfile" ]] ; then
@@ -307,7 +312,7 @@ main(){
             mv -f elive*${image_extension} old/
 
             # TODO: test if works with the temporal url
-            zsync -i "old/${image_old}" "${image_url}.zsync" 1>"$TMP_PROGRESS_WORKING_f" &
+            zsync -i "old/${image_old}" "${image_url}.zsync" 1>"$TMP_PROGRESS_WORKING_f" 2>"$TMP_ERROR_LOGS_f" &
             # TODO: catch errors too, and search for an error to show to the user, like "No space left on device"
             pid="$!"
             sleep 2
