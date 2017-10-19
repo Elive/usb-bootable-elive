@@ -432,7 +432,7 @@ main(){
 
     image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
 
-    if [[ "$image_device" = "cancel" ]] || [[ -z "$image_device" ]] ; then
+    if [[ "$image_device" = "cancel" ]] || [[ -z "$image_device" ]] || [[ ! -b "$image_device" ]] ; then
         if guitool question "$( eval_gettext "You have not selected any device to use, do you want to exit?" )" ; then
             exit 1
         else
@@ -440,7 +440,7 @@ main(){
 
             image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
 
-            if [[ "$image_device" = "cancel" ]] || [[ -z "$image_device" ]] ; then
+            if [[ "$image_device" = "cancel" ]] || [[ -z "$image_device" ]] || [[ ! -b "$image_device" ]] ; then
                 exit 1
             fi
         fi
@@ -449,7 +449,7 @@ main(){
     # - select device to record Elive }}}
 
     # record Elive to device {{{
-    if [[ -s "$image_filename" ]] ; then
+    if [[ -s "$image_filename" ]] && [[ -b "$image_device" ]] ; then
         local message_recording
         message_recording="$( printf "$( eval_gettext "Recording Elive %s to your %s device" )" "$image_version" "$image_device" )"
 
