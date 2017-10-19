@@ -206,6 +206,7 @@ main(){
     # }}}
 
     # select version {{{
+    guitool working_stop
     guitool working_start
 
     image_stable_url="$( lynx -dump "${url_elive}/download/stable/" | grep "${url_elive}/downloads/stable/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
@@ -311,13 +312,19 @@ main(){
             local message_downloading
             message_downloading="$( printf "$( eval_gettext "Synchronizing to Elive %s, please be patient..." )" "$image_version" )"
 
+            local message_comparing
+            message_comparing="$( printf "$( eval_gettext "Searching particles in the universe to recycle, to save you around the 90% of the needed download!" )" "" )"
+
+
             while kill -0 "$pid" 2>/dev/null
             do
                 progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' | tail -1 )"
                 if [[ "$progress" = 100 ]] ; then
-                    echo "$(( $progress - 10 ))"
+                    echo "50"
+                    echo "# $message_comparing"
                 else
                     echo "$progress"
+                    echo "# $message_downloading"
                 fi
                 sleep 5
             done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )" || exit 1
