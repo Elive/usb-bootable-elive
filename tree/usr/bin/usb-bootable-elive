@@ -9,7 +9,7 @@ guitool="/usr/bin/zenity --window-icon=/usr/share/icons/gnome/256x256/apps/logo-
 url_elive="www.elivecd.org"
 cache_dir="$HOME/.cache/$(basename $0)"
 TMP_PROGRESS_WORKING_f="${cache_dir}/progress-file-working"
-wgetopts="--tries=5 --progress=dot:binary -c"
+wgetopts="--tries=40 --progress=dot:binary -c"
 
 # TODO:
 set -x
