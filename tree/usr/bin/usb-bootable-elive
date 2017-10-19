@@ -211,190 +211,203 @@ main(){
     # }}}
 
     # select version {{{
-    guitool working_stop
-    guitool working_start
-
-    image_stable_url="$( lynx -dump "${url_elive}/download/stable/" | grep "${url_elive}/downloads/stable/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
-    read -r image_stable_url <<< "$image_stable_url"
-    image_stable_version="${image_stable_url%/*}"
-    image_stable_version="${image_stable_version##*/}"
-    image_stable_filename="${image_stable_url##*/}"
-
-    image_beta_url="$( lynx -dump "${url_elive}/download/beta/" | grep "${url_elive}/downloads/other/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
-    read -r image_beta_url <<< "$image_beta_url"
-    image_beta_version="${image_beta_url%/*}"
-    image_beta_version="${image_beta_version##*/}"
-    image_beta_filename="${image_beta_url##*/}"
-
-    if [[ -n "$image_stable_url" ]] && [[ -n "$image_beta_url" ]] ; then
-        # ask version to use
-        if guitool question "$( eval_gettext "Do you want to use the last Beta version instead of the Stable?" )" ; then
-            image_url="$image_beta_url"
-            image_version="$image_beta_version"
-            image_filename="$image_beta_filename"
-            image_subdir="development"
+    if guitool question "$( eval_gettext "Do you have an already downloaded Elive version? Otherwise we will download the last one." )" ; then
+        image_filename="$( $guitool --file-selection --file-filter="*.img *.IMG *.iso *.ISO" || echo cancel )"
+        if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] ; then
+            is_image_given=1
         else
-            image_url="$image_stable_url"
-            image_version="$image_stable_version"
-            image_filename="$image_stable_filename"
-            image_subdir="stable"
+            unset image_filename
+            unset is_image_given
         fi
-
     else
-        # only beta available
-        if [[ -z "$image_stable_url" ]] ; then
-            image_url="$image_beta_url"
-            image_version="$image_beta_version"
-            image_filename="$image_beta_filename"
-            image_subdir="development"
+
+        guitool working_stop
+        guitool working_start
+
+        image_stable_url="$( lynx -dump "${url_elive}/download/stable/" | grep "${url_elive}/downloads/stable/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
+        read -r image_stable_url <<< "$image_stable_url"
+        image_stable_version="${image_stable_url%/*}"
+        image_stable_version="${image_stable_version##*/}"
+        image_stable_filename="${image_stable_url##*/}"
+
+        image_beta_url="$( lynx -dump "${url_elive}/download/beta/" | grep "${url_elive}/downloads/other/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
+        read -r image_beta_url <<< "$image_beta_url"
+        image_beta_version="${image_beta_url%/*}"
+        image_beta_version="${image_beta_version##*/}"
+        image_beta_filename="${image_beta_url##*/}"
+
+        if [[ -n "$image_stable_url" ]] && [[ -n "$image_beta_url" ]] ; then
+            # ask version to use
+            if guitool question "$( eval_gettext "Do you want to use the last Beta version instead of the Stable?" )" ; then
+                image_url="$image_beta_url"
+                image_version="$image_beta_version"
+                image_filename="$image_beta_filename"
+                image_subdir="development"
+            else
+                image_url="$image_stable_url"
+                image_version="$image_stable_version"
+                image_filename="$image_stable_filename"
+                image_subdir="stable"
+            fi
+
+        else
+            # only beta available
+            if [[ -z "$image_stable_url" ]] ; then
+                image_url="$image_beta_url"
+                image_version="$image_beta_version"
+                image_filename="$image_beta_filename"
+                image_subdir="development"
+            fi
+
+            # only stable available
+            if [[ -z "$image_beta_url" ]] ; then
+                image_url="$image_stable_url"
+                image_version="$image_stable_version"
+                image_filename="$image_stable_filename"
+                image_subdir="stable"
+            fi
         fi
 
-        # only stable available
-        if [[ -z "$image_beta_url" ]] ; then
-            image_url="$image_stable_url"
-            image_version="$image_stable_version"
-            image_filename="$image_stable_filename"
-            image_subdir="stable"
+        # checks
+        if [[ -z "$image_url" ]] ; then
+            guitool error "$( eval_gettext "No versions of Elive for USB available found from the website." )"
+            exit 1
         fi
-    fi
 
-    # checks
-    if [[ -z "$image_url" ]] ; then
-        guitool error "$( eval_gettext "No versions of Elive for USB available found from the website." )"
-        exit 1
-    fi
+        # get redirector, specially needed for zsync to work
+        guitool working_start
+        _image_url="$( LC_ALL=C timeout 10 wget --verbose "$image_url" -O /dev/null 2>&1 | grep -i "Location:.*following" | sed -e 's|^Location: ||g' -e 's|\[follow.*$||g' )"
+        if [[ "$_image_url" = http* ]] ;  then
+            image_url="$_image_url"
+            read -r image_url <<< "$image_url"
+        fi
 
-    # get redirector, specially needed for zsync to work
-    guitool working_start
-    _image_url="$( LC_ALL=C timeout 10 wget --verbose "$image_url" -O /dev/null 2>&1 | grep -i "Location:.*following" | sed -e 's|^Location: ||g' -e 's|\[follow.*$||g' )"
-    if [[ "$_image_url" = http* ]] ;  then
-        image_url="$_image_url"
-        read -r image_url <<< "$image_url"
     fi
-
 
     # - select version }}}
     # download images {{{
-    mkdir -p "$cache_dir/downloads/${image_subdir}/${image_extension}"
-    cd "$cache_dir/downloads/${image_subdir}/${image_extension}"
+    if ! ((is_image_given)) ; then
+        mkdir -p "$cache_dir/downloads/${image_subdir}/${image_extension}"
+        cd "$cache_dir/downloads/${image_subdir}/${image_extension}"
 
-    image_md5="${image_filename%.*}.md5"
-    rm -f "$image_md5"
+        image_md5="${image_filename%.*}.md5"
+        rm -f "$image_md5"
 
-    # download the md5
-    case "$image_extension" in
-        img)
-            wget $wgetopts --quiet "${image_url%/*}/${image_filename%.img}.md5"
-            ;;
-        iso)
-            wget $wgetopts --quiet "${image_url%/*}/${image_filename%.iso}.md5"
-            ;;
-    esac
+        # download the md5
+        case "$image_extension" in
+            img)
+                wget $wgetopts --quiet "${image_url%/*}/${image_filename%.img}.md5"
+                ;;
+            iso)
+                wget $wgetopts --quiet "${image_url%/*}/${image_filename%.iso}.md5"
+                ;;
+        esac
 
-    if [[ -s "$image_filename" ]] ; then
-        # download ready to use
-        # TODO: check md5 to know that is valid
-        guitool working_start
-        if md5sum -c "${image_md5}" ; then
-            is_checksum_ok=1
+        if [[ -s "$image_filename" ]] ; then
+            # download ready to use
+            # TODO: check md5 to know that is valid
+            guitool working_start
+            if md5sum -c "${image_md5}" ; then
+                is_checksum_ok=1
+            else
+                is_redownload_wanted=1
+            fi
+            guitool working_stop
         else
-            is_redownload_wanted=1
+            image_old="$( ls -1 *.img 2>/dev/null | sort -V | tail -1 )"
+
+            # re-use with zsync
+            if [[ -s "$image_old" ]] ; then
+                # use zsync
+                rm -rf old
+                mkdir -p old
+                mv -f elive*${image_extension} old/
+
+                # TODO: test if works with the temporal url
+                zsync -i "old/${image_old}" "${image_url}.zsync" 1>"$TMP_PROGRESS_WORKING_f" 2>"$TMP_ERROR_LOGS_f" &
+                # TODO: catch errors too, and search for an error to show to the user, like "No space left on device"
+                pid="$!"
+                sleep 2
+
+                local message_downloading
+                message_downloading="$( printf "$( eval_gettext "Synchronizing to Elive %s, please be patient..." )" "$image_version" )"
+
+                local message_comparing
+                message_comparing="$( printf "$( eval_gettext "Searching particles in the universe to recycle, to save you around the 90 percent of the needed download!" )" "" )"
+
+
+                while kill -0 "$pid" 2>/dev/null
+                do
+                    progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' | tail -1 )"
+                    if [[ "$progress" = 100 ]] ; then
+                        #if ! shuf -i 30-70 -n 1 2>/dev/null ; then
+                        #echo "50"
+                        #fi
+                        echo "# $message_comparing"
+                    else
+                        #echo "$progress"
+                        echo "# ${message_downloading}: ${progress} %"
+                    fi
+                    sleep 5
+                done | $guitool --progress --pulsate --auto-close --text="$( eval_gettext "$message_downloading" )" || exit 1
+
+                # cleanups
+                rm -f rcksum-*
+
+                # TODO: add a function to verify signature
+                #guitool working_start
+                if md5sum -c "${image_md5}" ; then
+                    is_checksum_ok=1
+                    rm -rf old/
+                else
+                    guitool error "$( eval_gettext "MD5 verification doesn't match" )"
+                    exit 1
+                fi
+                guitool working_stop
+            fi
         fi
-        guitool working_stop
-    else
-        image_old="$( ls -1 *.img 2>/dev/null | sort -V | tail -1 )"
 
-        # re-use with zsync
-        if [[ -s "$image_old" ]] ; then
-            # use zsync
-            rm -rf old
-            mkdir -p old
-            mv -f elive*${image_extension} old/
-
-            # TODO: test if works with the temporal url
-            zsync -i "old/${image_old}" "${image_url}.zsync" 1>"$TMP_PROGRESS_WORKING_f" 2>"$TMP_ERROR_LOGS_f" &
-            # TODO: catch errors too, and search for an error to show to the user, like "No space left on device"
+        # we don't have it, nor zsynced, download it
+        if ! [[ -s "$image_filename" ]] || ((is_redownload_wanted)) ; then
+            # TODO: catch errors, like not enough free space?
+            LC_ALL=C wget $wgetopts "$image_url" 1>"$TMP_PROGRESS_WORKING_f" 2>"$TMP_ERROR_LOGS_f" &
             pid="$!"
             sleep 2
 
             local message_downloading
-            message_downloading="$( printf "$( eval_gettext "Synchronizing to Elive %s, please be patient..." )" "$image_version" )"
-
-            local message_comparing
-            message_comparing="$( printf "$( eval_gettext "Searching particles in the universe to recycle, to save you around the 90 percent of the needed download!" )" "" )"
-
+            message_downloading="$( printf "$( eval_gettext "Downloading Elive %s, please be patient..." )" "$image_version" )"
 
             while kill -0 "$pid" 2>/dev/null
             do
                 progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' | tail -1 )"
-                if [[ "$progress" = 100 ]] ; then
-                    #if ! shuf -i 30-70 -n 1 2>/dev/null ; then
-                        #echo "50"
-                    #fi
-                    echo "# $message_comparing"
-                else
-                    #echo "$progress"
-                    echo "# ${message_downloading}: ${progress} %"
-                fi
+                echo "$progress"
                 sleep 5
-            done | $guitool --progress --pulsate --auto-close --text="$( eval_gettext "$message_downloading" )" || exit 1
+            done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )" || exit 1
 
-            # cleanups
-            rm -f rcksum-*
+            # TODO:
+            guitool working_start
+            if ! md5sum -c "${image_md5}" ; then
+                rm -f "$image_filename"
+            fi
+            guitool working_stop
+        fi
 
-            # TODO: add a function to verify signature
-            #guitool working_start
+        if [[ -s "$image_filename" ]] && ! ((is_checksum_ok)) ; then
+            guitool working_start
             if md5sum -c "${image_md5}" ; then
                 is_checksum_ok=1
-                rm -rf old/
             else
+                rm -f "$image_filename"
                 guitool error "$( eval_gettext "MD5 verification doesn't match" )"
                 exit 1
             fi
             guitool working_stop
         fi
-    fi
 
-    # we don't have it, nor zsynced, download it
-    if ! [[ -s "$image_filename" ]] || ((is_redownload_wanted)) ; then
-        # TODO: catch errors, like not enough free space?
-        LC_ALL=C wget $wgetopts "$image_url" 1>"$TMP_PROGRESS_WORKING_f" 2>"$TMP_ERROR_LOGS_f" &
-        pid="$!"
-        sleep 2
-
-        local message_downloading
-        message_downloading="$( printf "$( eval_gettext "Downloading Elive %s, please be patient..." )" "$image_version" )"
-
-        while kill -0 "$pid" 2>/dev/null
-        do
-            progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' | tail -1 )"
-            echo "$progress"
-            sleep 5
-        done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )" || exit 1
-
-        # TODO:
-        guitool working_start
-        if ! md5sum -c "${image_md5}" ; then
-            rm -f "$image_filename"
-        fi
-        guitool working_stop
-    fi
-
-    if [[ -s "$image_filename" ]] && ! ((is_checksum_ok)) ; then
-        guitool working_start
-        if md5sum -c "${image_md5}" ; then
-            is_checksum_ok=1
-        else
-            rm -f "$image_filename"
-            guitool error "$( eval_gettext "MD5 verification doesn't match" )"
+        if ! ((is_checksum_ok)) ; then
+            guitool error "$( eval_gettext "Integrity not verified correctly." )"
             exit 1
         fi
-        guitool working_stop
-    fi
-
-    if ! ((is_checksum_ok)) ; then
-        guitool error "$( eval_gettext "Integrity not verified correctly." )"
-        exit 1
     fi
 
         # verify md5
