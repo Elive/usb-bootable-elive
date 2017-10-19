@@ -312,7 +312,8 @@ main(){
 
         while kill -0 "$pid" 2>/dev/null
         do
-            cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g'
+            progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' )"
+            echo "$progress"
             sleep 5
         done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )"
 
