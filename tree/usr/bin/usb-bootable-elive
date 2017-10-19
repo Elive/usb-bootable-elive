@@ -7,7 +7,6 @@ export TEXTDOMAIN
 
 guitool="/usr/bin/zenity --window-icon=/usr/share/icons/gnome/256x256/apps/logo-elive.png"
 url_elive="www.elivecd.org"
-url_isos="isos.elivecd.org"
 cache_dir="$HOME/.cache/$(basename $0)"
 TMP_PROGRESS_WORKING_f="${cache_dir}/progress-file-working"
 wgetopts="--tries=5 --progress=dot:binary -c"
@@ -229,6 +228,7 @@ main(){
     _image_url="$( LC_ALL=C timeout 10 wget --verbose "$image_url" -O /dev/null 2>&1 | grep -i "Location:.*following" | sed -e 's|^Location: ||g' -e 's|\[follow.*$||g' )"
     if [[ "$_image_url" = http* ]] ;  then
         image_url="$_image_url"
+        read -r image_url <<< "$image_url"
     fi
 
 
@@ -243,10 +243,10 @@ main(){
     # download the md5
     case "$image_extension" in
         img)
-            wget $wgetopts --quiet "${url_isos}/${image_subdir}/${image_filename%.img}.md5"
+            wget $wgetopts --quiet "${image_url%/*}/${image_filename%.img}.md5"
             ;;
         iso)
-            wget $wgetopts --quiet "${url_isos}/${image_subdir}/${image_filename%.iso}.md5"
+            wget $wgetopts --quiet "${image_url%/*}/${image_filename%.iso}.md5"
             ;;
     esac
 
@@ -271,11 +271,12 @@ main(){
             # TODO: test if works with the temporal url
             zsync -i "old/${image_old}" "${image_url}.zsync" 1>"$TMP_PROGRESS_WORKING_f" &
             pid="$!"
+            sleep 2
 
             local message_downloading
             message_downloading="$( printf "$( eval_gettext "Synchronizing to Elive %s, please be patient..." )" "$image_version" )"
 
-            while kill -0 "$pid"
+            while kill -0 "$pid" 2>/dev/null
             do
                 progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' )"
                 if [[ "$progress" = 100 ]] ; then
@@ -302,11 +303,12 @@ main(){
         # TODO: catch errors, like not enough free space?
         LC_ALL=C wget $wgetopts "$image_url" 1>"$TMP_PROGRESS_WORKING_f" 2>&1 &
         pid="$!"
+        sleep 2
 
         local message_downloading
         message_downloading="$( printf "$( eval_gettext "Downloading Elive %s, please be patient..." )" "$image_version" )"
 
-        while kill -0 "$pid"
+        while kill -0 "$pid" 2>/dev/null
         do
             cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g'
             sleep 5
