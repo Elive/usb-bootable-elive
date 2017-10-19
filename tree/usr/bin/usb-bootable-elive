@@ -308,6 +308,7 @@ main(){
 
             # TODO: test if works with the temporal url
             zsync -i "old/${image_old}" "${image_url}.zsync" 1>"$TMP_PROGRESS_WORKING_f" &
+            # TODO: catch errors too, and search for an error to show to the user, like "No space left on device"
             pid="$!"
             sleep 2
 
