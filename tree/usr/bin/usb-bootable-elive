@@ -329,12 +329,16 @@ main(){
                 sleep 5
             done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )" || exit 1
 
+            # cleanups
+            rm -f rcksum-*
+
             # TODO: add a function to verify signature
             #guitool working_start
             if md5sum -c "${image_md5}" ; then
                 rm -rf old/
             else
                 guitool error "$( eval_gettext "MD5 verification doesn't match" )"
+                exit 1
             fi
             guitool working_stop
         fi
