@@ -13,7 +13,7 @@ TMP_ERROR_LOGS_f="${cache_dir}/logs-error.txt"
 wgetopts="--tries=40 --progress=dot:binary -c"
 
 # TODO:
-set -x
+#set -x
 # FIXME: add verifiers, el_error, etc instead of a set -e, also set -e doens't reports anything to the user to know whats going on
 #set -e
 
@@ -24,6 +24,7 @@ exit_ok(){
     guitool working_stop
     rm -f "$lockfile"
     kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null
+    rm -f "$TMP_ERROR_LOGS_f" "$TMP_PROGRESS_WORKING_f"
 }
 exit_error(){
     guitool working_stop
@@ -34,6 +35,7 @@ exit_error(){
     else
         guitool error "$( eval_gettext "Aborted tool for recording Elive to an USB." )"
     fi
+    rm -f "$TMP_ERROR_LOGS_f" "$TMP_PROGRESS_WORKING_f"
 }
 
 if [[ -r "$lockfile" ]] ; then
@@ -357,7 +359,7 @@ main(){
     # we don't have it, nor zsynced, download it
     if ! [[ -s "$image_filename" ]] || ((is_redownload_wanted)) ; then
         # TODO: catch errors, like not enough free space?
-        LC_ALL=C wget $wgetopts "$image_url" 1>"$TMP_PROGRESS_WORKING_f" 2>&1 &
+        LC_ALL=C wget $wgetopts "$image_url" 1>"$TMP_PROGRESS_WORKING_f" 2>"$TMP_ERROR_LOGS_f" &
         pid="$!"
         sleep 2
 
