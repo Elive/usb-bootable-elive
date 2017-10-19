@@ -313,21 +313,23 @@ main(){
             message_downloading="$( printf "$( eval_gettext "Synchronizing to Elive %s, please be patient..." )" "$image_version" )"
 
             local message_comparing
-            message_comparing="$( printf "$( eval_gettext "Searching particles in the universe to recycle, to save you around the 90% of the needed download!" )" "" )"
+            message_comparing="$( printf "$( eval_gettext "Searching particles in the universe to recycle, to save you around the 90 percent of the needed download!" )" "" )"
 
 
             while kill -0 "$pid" 2>/dev/null
             do
                 progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' | tail -1 )"
                 if [[ "$progress" = 100 ]] ; then
-                    echo "50"
+                    #if ! shuf -i 30-70 -n 1 2>/dev/null ; then
+                        #echo "50"
+                    #fi
                     echo "# $message_comparing"
                 else
-                    echo "$progress"
-                    echo "# $message_downloading"
+                    #echo "$progress"
+                    echo "# ${message_downloading}: ${progress} %"
                 fi
                 sleep 5
-            done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )" || exit 1
+            done | $guitool --progress --pulsate --auto-close --text="$( eval_gettext "$message_downloading" )" || exit 1
 
             # cleanups
             rm -f rcksum-*
