@@ -294,7 +294,9 @@ main(){
         # download ready to use
         # TODO: check md5 to know that is valid
         guitool working_start
-        if ! md5sum -c "${image_md5}" ; then
+        if md5sum -c "${image_md5}" ; then
+            is_checksum_ok=1
+        else
             is_redownload_wanted=1
         fi
         guitool working_stop
@@ -342,6 +344,7 @@ main(){
             # TODO: add a function to verify signature
             #guitool working_start
             if md5sum -c "${image_md5}" ; then
+                is_checksum_ok=1
                 rm -rf old/
             else
                 guitool error "$( eval_gettext "MD5 verification doesn't match" )"
@@ -376,14 +379,21 @@ main(){
         guitool working_stop
     fi
 
-    if [[ -s "$image_filename" ]] ; then
+    if [[ -s "$image_filename" ]] && ! ((is_checksum_ok)) ; then
         guitool working_start
-        if ! md5sum -c "${image_md5}" ; then
+        if md5sum -c "${image_md5}" ; then
+            is_checksum_ok=1
+        else
             rm -f "$image_filename"
             guitool error "$( eval_gettext "MD5 verification doesn't match" )"
             exit 1
         fi
         guitool working_stop
+    fi
+
+    if ! ((is_checksum_ok)) ; then
+        guitool error "$( eval_gettext "Integrity not verified correctly." )"
+        exit 1
     fi
 
         # verify md5
