@@ -213,7 +213,7 @@ main(){
     # select version {{{
     if guitool question "$( eval_gettext "Do you have an already downloaded Elive version? Otherwise we will download the last one." )" ; then
         image_filename="$( $guitool --file-selection --file-filter="*.img *.IMG *.iso *.ISO" || echo cancel )"
-        if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] ; then
+        if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] && ! [[ -z "$image_filename" ]] ; then
             is_image_given=1
         else
             unset image_filename
@@ -432,7 +432,7 @@ main(){
 
     image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
 
-    if [[ "$image_device" = "cancel" ]] ; then
+    if [[ "$image_device" = "cancel" ]] || [[ -z "$image_device" ]] ; then
         if guitool question "$( eval_gettext "You have not selected any device to use, do you want to exit?" )" ; then
             exit 1
         else
@@ -440,7 +440,7 @@ main(){
 
             image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
 
-            if [[ "$image_device" = "cancel" ]] ; then
+            if [[ "$image_device" = "cancel" ]] || [[ -z "$image_device" ]] ; then
                 exit 1
             fi
         fi
