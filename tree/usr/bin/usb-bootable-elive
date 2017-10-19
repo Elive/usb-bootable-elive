@@ -440,7 +440,10 @@ main(){
         message_recording="$( printf "$( eval_gettext "Recording Elive %s to your %s device" )" "$image_version" "$image_device" )"
 
         guitool working_start "$message_recording"
-        dd if="$image_filename" of="$image_device" bs=8M
+        if ! dd if="$image_filename" of="$image_device" bs=8M ; then
+            guitool error "$( eval_gettext "Error recording USB" )"
+            exit 1
+        fi
         guitool working_stop
     fi
 
