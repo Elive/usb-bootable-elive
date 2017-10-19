@@ -268,7 +268,7 @@ main(){
             # use zsync
             rm -rf old
             mkdir -p old
-            mv * old/
+            mv -f elive* old/
 
             # TODO: test if works with the temporal url
             zsync -i "old/${image_old}" "${image_url}.zsync" 1>"$TMP_PROGRESS_WORKING_f" &
