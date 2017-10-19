@@ -280,8 +280,8 @@ main(){
 
             while kill -0 "$pid" 2>/dev/null
             do
-                progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' )"
-                if [[ "$progress" = 100 ]] ; then
+                progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' | tail -1 )"
+                if [[ "$progress" = 100 ]] && [[ "$progress" -gt 10 ]] ; then
                     echo "$progress"
                 else
                     echo "$(( $progress - 10 ))"
@@ -312,7 +312,7 @@ main(){
 
         while kill -0 "$pid" 2>/dev/null
         do
-            progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' )"
+            progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' | tail -1 )"
             echo "$progress"
             sleep 5
         done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )"
