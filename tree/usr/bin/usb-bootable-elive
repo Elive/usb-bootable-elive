@@ -26,6 +26,7 @@ exit_ok(){
 exit_error(){
     rm -f "$lockfile"
     kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null
+    guitool error "$( eval_gettext "Aborted tool for recording Elive to an USB." )"
 }
 
 if [[ -r "$lockfile" ]] ; then
@@ -254,7 +255,7 @@ main(){
     # checks
     if [[ -z "$image_url" ]] ; then
         guitool error "$( eval_gettext "No versions of Elive for USB available found from the website." )"
-        exit
+        exit 1
     fi
 
     # get redirector, specially needed for zsync to work
@@ -319,7 +320,7 @@ main(){
                     echo "$progress"
                 fi
                 sleep 5
-            done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )"
+            done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )" || exit 1
 
             # TODO: add a function to verify signature
             #guitool working_start
@@ -347,7 +348,7 @@ main(){
             progress="$( cat "$TMP_PROGRESS_WORKING_f" | grep % | tail -1 | tr ' ' '\n' | grep % | sed -e 's|%||g' -e 's|\..*$||g' | tail -1 )"
             echo "$progress"
             sleep 5
-        done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )"
+        done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )" || exit 1
 
         # TODO:
         guitool working_start
@@ -380,8 +381,7 @@ main(){
     fi
 
     if [[ "${#menu[@]}" -lt 3 ]] ; then
-        guitool error "$( eval_gettext "No USB devices found. Aborted." )"
-        exit
+        exit 1
     fi
 
 
@@ -392,15 +392,14 @@ main(){
 
     if [[ "$image_device" = "cancel" ]] ; then
         if guitool question "$( eval_gettext "You have not selected any device to use, do you want to exit?" )" ; then
-            exit
+            exit 1
         else
             generate_menu_selector
 
             image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
 
             if [[ "$image_device" = "cancel" ]] ; then
-                guitool error "$( eval_gettext "Aborted recording Elive to an USB." )"
-                exit
+                exit 1
             fi
         fi
     fi
