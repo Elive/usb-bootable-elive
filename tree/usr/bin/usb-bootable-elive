@@ -20,10 +20,12 @@ set -x
 lockfile="/tmp/.$(basename $0)-${USER}.lock"
 
 exit_ok(){
+    guitool working_stop
     rm -f "$lockfile"
     kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null
 }
 exit_error(){
+    guitool working_stop
     rm -f "$lockfile"
     kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null
     guitool error "$( eval_gettext "Aborted tool for recording Elive to an USB." )"
