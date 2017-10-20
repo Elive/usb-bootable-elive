@@ -480,6 +480,8 @@ main(){
             el_error "dd was unable to write"
             exit 1
         fi
+        sync
+
         guitool working_stop
     fi
 
