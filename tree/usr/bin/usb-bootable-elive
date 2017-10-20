@@ -475,7 +475,7 @@ main(){
         fi
 
         guitool working_start "$message_recording"
-        if ! dd if="$image_filename" of="$image_device" bs=8M ; then
+        if ! dd if="$image_filename" of="$image_device" bs=8M 1>/dev/null ; then
             guitool error "$( eval_gettext "Error recording USB" )"
             el_error "dd was unable to write"
             exit 1
