@@ -198,13 +198,6 @@ main(){
         exit
     fi
 
-    # TODO: betatest it!
-    if guitool question "$( eval_gettext "Do you want to use the IMG version? it will feature persistence, but the ISO version can be compatible in other rare hardware." )" ; then
-        image_extension="img"
-    else
-        image_extension="iso"
-    fi
-
     mkdir -p "$cache_dir"
     cd "$cache_dir"
 
@@ -220,6 +213,13 @@ main(){
             unset is_image_given
         fi
     else
+
+        # ask for img / iso
+        if guitool question "$( eval_gettext "Do you want to use the IMG version? it will feature persistence, but the ISO version can be compatible in other rare hardware." )" ; then
+            image_extension="img"
+        else
+            image_extension="iso"
+        fi
 
         guitool working_stop
         guitool working_start
