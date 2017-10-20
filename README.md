@@ -1,6 +1,6 @@
 USB Bootable
 ============
 
-Tool for make an usb memory stick to be a bootable device with Elive
+Tool for make usb memory stick's to be a bootable system with Elive
 
 

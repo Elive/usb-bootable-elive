@@ -424,10 +424,14 @@ main(){
         guitool info "$( eval_gettext "Please insert the USB where to record Elive before to continue." )"
 
         generate_menu_selector
+        if [[ "${#menu[@]}" -lt 3 ]] ; then
+            sleep 6
+            generate_menu_selector
+        fi
     fi
 
     if [[ "${#menu[@]}" -lt 3 ]] ; then
-        el_error "no candidates found for USB devices"
+        guitool error "$( eval_gettext "No USB sticks found." )"
         exit 1
     fi
 
