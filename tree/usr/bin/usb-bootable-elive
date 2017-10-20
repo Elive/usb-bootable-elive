@@ -31,6 +31,8 @@ exit_error(){
     else
         guitool error "$( eval_gettext "Aborted tool for recording Elive to an USB." )"
     fi
+    guitool info "$( eval_gettext "If there's an issue with the tool we suggest to report it to Elive. You can also try to delete the next directory:" ) $cache_dir"
+
     rm -f "$TMP_ERROR_LOGS_f" "$TMP_PROGRESS_WORKING_f"
 }
 
