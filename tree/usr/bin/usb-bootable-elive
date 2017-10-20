@@ -206,8 +206,10 @@ main(){
     # select version {{{
     if guitool question "$( eval_gettext "Do you have an already downloaded Elive version? Otherwise we will download the last one." )" ; then
         image_filename="$( $guitool --file-selection --file-filter="*.img *.IMG *.iso *.ISO" || echo cancel )"
+
         if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] && ! [[ -z "$image_filename" ]] ; then
             is_image_given=1
+            image_version="$( echo "$image_filename" | sed -e 's|^.*/||g' -e 's|elive_||g' -e 's|_.*$||g' )"
         else
             unset image_filename
             unset is_image_given
