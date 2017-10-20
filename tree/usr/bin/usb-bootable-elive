@@ -212,6 +212,9 @@ main(){
         if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] && ! [[ -z "$image_filename" ]] ; then
             is_image_given=1
             image_version="$( echo "$image_filename" | sed -e 's|^.*/||g' -e 's|elive_||g' -e 's|_.*$||g' )"
+            if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
+                image_version="$( basename "$image_filename" )"
+            fi
         else
             unset image_filename
             unset is_image_given
@@ -466,6 +469,9 @@ main(){
     if [[ -s "$image_filename" ]] && [[ -b "$image_device" ]] ; then
         local message_recording
         message_recording="$( printf "$( eval_gettext "Recording Elive %s to your %s device" )" "$image_version" "$image_device" )"
+        if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
+            message_recording="$( printf "$( eval_gettext "Recording %s to your %s device" )" "$image_device" )"
+        fi
 
         guitool working_start "$message_recording"
         if ! dd if="$image_filename" of="$image_device" bs=8M ; then
