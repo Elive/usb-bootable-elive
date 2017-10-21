@@ -11,7 +11,7 @@ cache_dir="$HOME/.cache/$(basename $0)"
 TMP_PROGRESS_WORKING_f="${cache_dir}/progress-file-working"
 TMP_ERROR_LOGS_f="${cache_dir}/logs-error.txt"
 wgetopts="--tries=40 --progress=dot:binary -c"
-set -E
+#set -E
 
 # Lock system (good one) {{{
 lockfile="/tmp/.$(basename $0)-${USER}.lock"
@@ -471,7 +471,7 @@ main(){
         local message_recording
         message_recording="$( printf "$( eval_gettext "Recording Elive %s to your %s device" )" "$image_version" "$image_device" )"
         if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
-            message_recording="$( printf "$( eval_gettext "Recording %s to your %s device" )" "$image_device" )"
+            message_recording="$( printf "$( eval_gettext "Recording %s to your %s device" )" "${image_version}" "$image_device" )"
         fi
 
         guitool working_start "$message_recording"
