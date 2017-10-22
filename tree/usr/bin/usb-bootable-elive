@@ -131,6 +131,9 @@ guitool(){
 
             ;;
         working_start)
+            if ((is_auto_mode)) ; then
+                return
+            fi
             # already running? keep it running instead of creating a new one
             if [[ -s "$TMP_PROGRESS_WORKING_f" ]] || ((is_guitool_working_running)) ; then
                 return
@@ -170,6 +173,9 @@ guitool(){
 
             ;;
         working_stop)
+            if ((is_auto_mode)) ; then
+                return
+            fi
             rm -f "$TMP_PROGRESS_WORKING_f"
             unset is_guitool_working_running
 
@@ -189,6 +195,15 @@ guitool(){
     # }}}
 }
 
+usage(){
+    # options {{{
+    echo -e "$(basename $0) can record an ISO/IMG to a USB, compatible with most of images / isos even not Elive ones, the tool is interactive unless:"
+    echo -e "\nOptions:"
+    echo -e "--auto              Do not ask for USB device, just use the one that you have actually inserted"
+    echo -e "elive.iso|img       Use the given image to record"
+    # - options }}}
+}
+
 main(){
     # pre {{{
     local url_image_stable url_image_beta menu id_vendor
@@ -196,101 +211,143 @@ main(){
 
     el_dependencies_check "dd,lynx,wget,zsync"
 
-    if ! guitool question "$( eval_gettext "This tool will create an USB bootable media that you can use for boot Elive in any computer, all the data inside the USB is going to be deleted. Do you want to continue?" )" ; then
-        exit
-    fi
+    for arg in "$@"
+    do
+        case "$arg" in
+            --auto)
+                is_auto_mode=1
+                ;;
+            *.img|*.IMG|*.iso|*.ISO)
+                image_filename="$arg"
+
+                # verify
+                if [[ -s "$image_filename" ]] ; then
+                    is_image_given=1
+                else
+                    el_error "Invalid image given"
+                    exit
+                fi
+
+                # get the name version
+                image_version="$( echo "$image_filename" | sed -e 's|^.*/||g' -e 's|elive_||g' -e 's|_.*$||g' )"
+                if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
+                    image_version="$( basename "$image_filename" )"
+                fi
+
+                # fix paths
+                if [[ "$image_filename" != /* ]] ; then
+                    image_filename="$(pwd)/$image_filename"
+                fi
+                ;;
+            --help)
+                usage
+                exit
+                ;;
+        esac
+
+        shift
+    done
 
     mkdir -p "$cache_dir"
     cd "$cache_dir"
 
+
+    if ! ((is_auto_mode)) ; then
+        if ! guitool question "$( eval_gettext "This tool will create an USB bootable media that you can use for boot Elive in any computer, all the data inside the USB is going to be deleted. Do you want to continue?" )" ; then
+            exit
+        fi
+    fi
+
     # }}}
 
     # select version {{{
-    if guitool question "$( eval_gettext "Do you have an already downloaded Elive version? Otherwise we will download the last one." )" ; then
-        image_filename="$( $guitool --file-selection --filename="$( xdg-user-dir DOWNLOAD )/" --file-filter="*.img *.IMG *.iso *.ISO" || echo cancel )"
+    if ! ((is_image_given)) ; then
+        if guitool question "$( eval_gettext "Do you have an already downloaded Elive version? Otherwise we will download the last one." )" ; then
+            image_filename="$( $guitool --file-selection --filename="$( xdg-user-dir DOWNLOAD )/" --file-filter="*.img *.IMG *.iso *.ISO" || echo cancel )"
 
-        if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] && ! [[ -z "$image_filename" ]] ; then
-            is_image_given=1
-            image_version="$( echo "$image_filename" | sed -e 's|^.*/||g' -e 's|elive_||g' -e 's|_.*$||g' )"
-            if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
-                image_version="$( basename "$image_filename" )"
-                guitool info "$( eval_gettext "This doesn't looks like to be a normal Elive version, but we will try to use it anyways." )"
-            fi
-        else
-            unset image_filename
-            unset is_image_given
-        fi
-    else
-
-        # ask for img / iso
-        if guitool question "$( eval_gettext "Do you want to use the IMG version? The IMG version can have persistence with encryption, but the ISO version can be compatible with rare hardware." )" ; then
-            image_extension="img"
-        else
-            image_extension="iso"
-        fi
-
-        guitool working_stop
-        guitool working_start
-
-        image_stable_url="$( lynx -dump "${url_elive}/download/stable/" | grep "${url_elive}/downloads/stable/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
-        read -r image_stable_url <<< "$image_stable_url"
-        image_stable_version="${image_stable_url%/*}"
-        image_stable_version="${image_stable_version##*/}"
-        image_stable_filename="${image_stable_url##*/}"
-
-        image_beta_url="$( lynx -dump "${url_elive}/download/beta/" | grep "${url_elive}/downloads/other/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
-        read -r image_beta_url <<< "$image_beta_url"
-        image_beta_version="${image_beta_url%/*}"
-        image_beta_version="${image_beta_version##*/}"
-        image_beta_filename="${image_beta_url##*/}"
-
-        if [[ -n "$image_stable_url" ]] && [[ -n "$image_beta_url" ]] ; then
-            # ask version to use
-            if guitool question "$( eval_gettext "Do you want to use the last Beta version instead of the Stable?" )" ; then
-                image_url="$image_beta_url"
-                image_version="$image_beta_version"
-                image_filename="$image_beta_filename"
-                image_subdir="development"
+            if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] && ! [[ -z "$image_filename" ]] ; then
+                is_image_given=1
+                image_version="$( echo "$image_filename" | sed -e 's|^.*/||g' -e 's|elive_||g' -e 's|_.*$||g' )"
+                if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
+                    image_version="$( basename "$image_filename" )"
+                    guitool info "$( eval_gettext "This doesn't looks like to be a normal Elive version, but we will try to use it anyways." )"
+                fi
             else
-                image_url="$image_stable_url"
-                image_version="$image_stable_version"
-                image_filename="$image_stable_filename"
-                image_subdir="stable"
+                unset image_filename
+                unset is_image_given
             fi
-
         else
-            # only beta available
-            if [[ -z "$image_stable_url" ]] ; then
-                image_url="$image_beta_url"
-                image_version="$image_beta_version"
-                image_filename="$image_beta_filename"
-                image_subdir="development"
+
+            # ask for img / iso
+            if guitool question "$( eval_gettext "Do you want to use the IMG version? The IMG version can have persistence with encryption, but the ISO version can be compatible with rare hardware." )" ; then
+                image_extension="img"
+            else
+                image_extension="iso"
             fi
 
-            # only stable available
-            if [[ -z "$image_beta_url" ]] ; then
-                image_url="$image_stable_url"
-                image_version="$image_stable_version"
-                image_filename="$image_stable_filename"
-                image_subdir="stable"
+            guitool working_stop
+            guitool working_start
+
+            image_stable_url="$( lynx -dump "${url_elive}/download/stable/" | grep "${url_elive}/downloads/stable/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
+            read -r image_stable_url <<< "$image_stable_url"
+            image_stable_version="${image_stable_url%/*}"
+            image_stable_version="${image_stable_version##*/}"
+            image_stable_filename="${image_stable_url##*/}"
+
+            image_beta_url="$( lynx -dump "${url_elive}/download/beta/" | grep "${url_elive}/downloads/other/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
+            read -r image_beta_url <<< "$image_beta_url"
+            image_beta_version="${image_beta_url%/*}"
+            image_beta_version="${image_beta_version##*/}"
+            image_beta_filename="${image_beta_url##*/}"
+
+            if [[ -n "$image_stable_url" ]] && [[ -n "$image_beta_url" ]] ; then
+                # ask version to use
+                if guitool question "$( eval_gettext "Do you want to use the last Beta version instead of the Stable?" )" ; then
+                    image_url="$image_beta_url"
+                    image_version="$image_beta_version"
+                    image_filename="$image_beta_filename"
+                    image_subdir="development"
+                else
+                    image_url="$image_stable_url"
+                    image_version="$image_stable_version"
+                    image_filename="$image_stable_filename"
+                    image_subdir="stable"
+                fi
+
+            else
+                # only beta available
+                if [[ -z "$image_stable_url" ]] ; then
+                    image_url="$image_beta_url"
+                    image_version="$image_beta_version"
+                    image_filename="$image_beta_filename"
+                    image_subdir="development"
+                fi
+
+                # only stable available
+                if [[ -z "$image_beta_url" ]] ; then
+                    image_url="$image_stable_url"
+                    image_version="$image_stable_version"
+                    image_filename="$image_stable_filename"
+                    image_subdir="stable"
+                fi
             fi
-        fi
 
-        # checks
-        if [[ -z "$image_url" ]] ; then
-            guitool error "$( eval_gettext "No versions of Elive for USB available found from the website." )"
-            el_error "no versions found on the website"
-            exit 1
-        fi
+            # checks
+            if [[ -z "$image_url" ]] ; then
+                guitool error "$( eval_gettext "No versions of Elive for USB available found from the website." )"
+                el_error "no versions found on the website"
+                exit 1
+            fi
 
-        # get redirector, specially needed for zsync to work
-        guitool working_start
-        _image_url="$( LC_ALL=C timeout 10 wget --verbose "$image_url" -O /dev/null 2>&1 | grep -i "Location:.*following" | sed -e 's|^Location: ||g' -e 's|\[follow.*$||g' )"
-        if [[ "$_image_url" = http* ]] ;  then
-            image_url="$_image_url"
-            read -r image_url <<< "$image_url"
-        fi
+            # get redirector, specially needed for zsync to work
+            guitool working_start
+            _image_url="$( LC_ALL=C timeout 10 wget --verbose "$image_url" -O /dev/null 2>&1 | grep -i "Location:.*following" | sed -e 's|^Location: ||g' -e 's|\[follow.*$||g' )"
+            if [[ "$_image_url" = http* ]] ;  then
+                image_url="$_image_url"
+                read -r image_url <<< "$image_url"
+            fi
 
+        fi
     fi
 
     # - select version }}}
@@ -443,23 +500,37 @@ main(){
         exit 1
     fi
 
+    if ((is_auto_mode)) ; then
+        if [[ "${#menu[@]}" -eq 3 ]] ; then
+            if [[ -b "${menu[0]}" ]] ; then
+                image_device_size="$( partitions-list --show-disks --show-only="${menu[0]}" | awk -v FS="::" '{print $6 }' )"
+                if [[ "$image_device_size" -gt 3500000000 ]] && [[ "$image_device_size" -lt 75000000000 ]] ; then
+                    image_device="${menu[0]}"
+                else
+                    el_info "Device '${menu[0]}' named '${menu[2]}' has a size of '${image_device_size}' which is not common in USB sticks, switching to manual mode..."
+                fi
+            fi
+        fi
+    fi
 
     local message_select_usb
     message_select_usb="$( printf "$( eval_gettext "Select the USB where to record Elive, all the data and partitions inside will be permanently deleted." )" "" )"
 
-    image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
+    if ! [[ -n "$image_device" ]] || ! [[ -b "$image_device" ]] ; then
+        image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
 
-    if [[ "$image_device" = "cancel" ]] || [[ -z "$image_device" ]] || [[ ! -b "$image_device" ]] ; then
-        if guitool question "$( eval_gettext "You have not selected any device to use, do you want to exit?" )" ; then
-            exit 1
-        else
-            generate_menu_selector
-
-            image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
-
-            if [[ "$image_device" = "cancel" ]] || [[ -z "$image_device" ]] || [[ ! -b "$image_device" ]] ; then
-                el_error "wrong device selected: $image_device"
+        if [[ "$image_device" = "cancel" ]] || [[ -z "$image_device" ]] || [[ ! -b "$image_device" ]] ; then
+            if guitool question "$( eval_gettext "You have not selected any device to use, do you want to exit?" )" ; then
                 exit 1
+            else
+                generate_menu_selector
+
+                image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
+
+                if [[ "$image_device" = "cancel" ]] || [[ -z "$image_device" ]] || [[ ! -b "$image_device" ]] ; then
+                    el_error "wrong device selected: $image_device"
+                    exit 1
+                fi
             fi
         fi
     fi
@@ -474,7 +545,12 @@ main(){
             message_recording="$( printf "$( eval_gettext "Recording %s to your %s device" )" "${image_version}" "$image_device" )"
         fi
 
-        guitool working_start "$message_recording"
+        if ((is_auto_mode)) ; then
+            el_info "$message_recording"
+        else
+            guitool working_start "$message_recording"
+        fi
+
         if ! dd if="$image_filename" of="$image_device" bs=8M 1>/dev/null 2>&1 ; then
             guitool error "$( eval_gettext "Error recording USB" )"
             el_error "dd was unable to write"
@@ -485,7 +561,14 @@ main(){
         guitool working_stop
     fi
 
-    guitool info "$( eval_gettext "Congratulations, your USB is ready to be used in any computer! Remember that some newer computers requires to disable the UEFI and Secure Boot modes, you can found more info about this on the Elive website." )"
+    local message_congratulations
+    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used in any computer! Remember that some newer computers requires to disable the UEFI and Secure Boot modes, you can found more info about this on the Elive website." )" "" )"
+
+    if ((is_auto_mode)) ; then
+        el_info "$message_congratulations"
+    else
+        guitool info "$message_congratulations"
+    fi
 
     # }}}
     # delete cache if low space {{{
