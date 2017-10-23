@@ -426,7 +426,7 @@ main(){
                     is_checksum_ok=1
                     rm -rf old/
                 else
-                    guitool error "$( eval_gettext "MD5 verification doesn't match" )"
+                    guitool error "$( eval_gettext "Integrity verification doesn't match. Please run again this tool to try another download." )"
                     el_error "md5 verification failed"
                     exit 1
                 fi
@@ -465,7 +465,7 @@ main(){
                 is_checksum_ok=1
             else
                 rm -f "$image_filename"
-                guitool error "$( eval_gettext "MD5 verification doesn't match" )"
+                guitool error "$( eval_gettext "Integrity verification doesn't match. Please run again this tool to try another download." )"
                 el_error "md5 verification failed"
                 exit 1
             fi
