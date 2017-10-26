@@ -270,7 +270,7 @@ main(){
                 image_version="$( echo "$image_filename" | sed -e 's|^.*/||g' -e 's|elive_||g' -e 's|_.*$||g' )"
                 if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
                     image_version="$( basename "$image_filename" )"
-                    guitool info "$( eval_gettext "This doesn't looks like to be a normal Elive version, but we will try to use it anyways." )"
+                    guitool info "$( eval_gettext "This doesn't looks like to be a normal Elive version, but we will try to use it anyway." )"
                 fi
             else
                 unset image_filename
@@ -302,7 +302,7 @@ main(){
 
             if [[ -n "$image_stable_url" ]] && [[ -n "$image_beta_url" ]] ; then
                 # ask version to use
-                if guitool question "$( eval_gettext "Do you want to use the last Beta version instead of the Stable?" )" ; then
+                if guitool question "$( eval_gettext "Do you want to use the last Beta version instead of the Stable one?" )" ; then
                     image_url="$image_beta_url"
                     image_version="$image_beta_version"
                     image_filename="$image_beta_filename"
@@ -496,7 +496,7 @@ main(){
     fi
 
     if [[ "${#menu[@]}" -lt 3 ]] ; then
-        guitool error "$( eval_gettext "No USB sticks found." )"
+        guitool error "$( eval_gettext "No USB thumbdrives where found." )"
         exit 1
     fi
 
