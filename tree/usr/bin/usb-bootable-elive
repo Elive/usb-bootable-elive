@@ -214,6 +214,14 @@ main(){
     for arg in "$@"
     do
         case "$arg" in
+            -h|--help)
+                echo -e "This tool will record Elive in a USB, automatically downloading the last version and asking for your USB device where to record it."
+                echo -e " * if you use the --auto option, the USB is automatically detected and not asked"
+                echo -e " * if you give the image as parameter, it will not download it but use the given one"
+                echo -e "Example: $(basename $0) --auto elive_2.9.12_beta_usb.img"
+                echo -e "Note: this tool can be used to record most of linux distro's in USB too"
+                exit
+                ;;
             --auto)
                 is_auto_mode=1
                 ;;
