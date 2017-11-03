@@ -428,6 +428,13 @@ main(){
                 # cleanups
                 rm -f rcksum-*
 
+                # errors?
+                if grep -qs "No space left" "$TMP_ERROR_LOGS_f" "${TMP_PROGRESS_WORKING_f}" ; then
+                    guitool error "$( eval_gettext "No space left on device, please free some space in your disk before to run again this tool." )"
+                    rm -f "$image_filename"
+                    exit 1
+                fi
+
                 # TODO: add a function to verify signature
                 #guitool working_start
                 if md5sum -c "${image_md5}" ; then
@@ -444,7 +451,6 @@ main(){
 
         # we don't have it, nor zsynced, download it
         if ! [[ -s "$image_filename" ]] || ((is_redownload_wanted)) ; then
-            # TODO: catch errors, like not enough free space?
             LC_ALL=C wget $wgetopts "$image_url" 1>"$TMP_PROGRESS_WORKING_f" 2>"$TMP_ERROR_LOGS_f" &
             pid="$!"
             sleep 2
@@ -458,6 +464,13 @@ main(){
                 echo "$progress"
                 sleep 5
             done | $guitool --progress --auto-close --text="$( eval_gettext "$message_downloading" )" || exit 1
+
+            # errors?
+            if grep -qs "No space left" "$TMP_ERROR_LOGS_f" "${TMP_PROGRESS_WORKING_f}" ; then
+                guitool error "$( eval_gettext "No space left on device, please free some space in your disk before to run again this tool." )"
+                rm -f "$image_filename"
+                exit 1
+            fi
 
             # TODO:
             guitool working_start
