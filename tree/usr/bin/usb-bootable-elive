@@ -399,7 +399,6 @@ main(){
 
                 # TODO: test if works with the temporal url
                 zsync -i "old/${image_old}" "${image_url}.zsync" 1>"$TMP_PROGRESS_WORKING_f" 2>"$TMP_ERROR_LOGS_f" &
-                # TODO: catch errors too, and search for an error to show to the user, like "No space left on device"
                 pid="$!"
                 sleep 2
 
@@ -432,6 +431,8 @@ main(){
                 if grep -qs "No space left" "$TMP_ERROR_LOGS_f" "${TMP_PROGRESS_WORKING_f}" ; then
                     guitool error "$( eval_gettext "No space left on device, please free some space in your disk before to run again this tool." )"
                     rm -f "$image_filename"
+                    cd
+                    rm -rf "$cache_dir"
                     exit 1
                 fi
 
@@ -469,12 +470,16 @@ main(){
             if grep -qs "No space left" "$TMP_ERROR_LOGS_f" "${TMP_PROGRESS_WORKING_f}" ; then
                 guitool error "$( eval_gettext "No space left on device, please free some space in your disk before to run again this tool." )"
                 rm -f "$image_filename"
+                cd
+                rm -rf "$cache_dir"
                 exit 1
             fi
 
             # TODO:
             guitool working_start
-            if ! md5sum -c "${image_md5}" ; then
+            if md5sum -c "${image_md5}" ; then
+                is_checksum_ok=1
+            else
                 rm -f "$image_filename"
             fi
             guitool working_stop
