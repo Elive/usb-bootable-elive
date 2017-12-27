@@ -302,7 +302,20 @@ main(){
             image_stable_version="${image_stable_version##*/}"
             image_stable_filename="${image_stable_url##*/}"
 
+            # topaz version don't supports USB, or at least from this tool
+            if [[ "$image_stable_version" = "2.0" ]] ; then
+                unset image_stable_url image_stable_version image_stable_filename
+            fi
+
             image_beta_url="$( lynx -dump "${url_elive}/download/beta/" | grep "${url_elive}/downloads/other/.*\.${image_extension}" | sed -e 's|^.*www\.|www.|g' | sort -V | tail -1 )"
+            # no download available from the website (request-donation-mode set?)
+            if [[ -z "$image_beta_url" ]] ; then
+                image_beta_url="$( lynx -dump "isos.elivecd.org/development/" | grep "/development/elive_.*\.${image_extension}\$" | sed -e 's|^.*http|http|g' | sort -V | tail -1 )"
+                #if [[ -z "$image_beta_url" ]] ; then
+                    #image_beta_url="$( lynx -dump "isos.elivecd.org/beta/" | grep "/beta/elive_.*\.${image_extension}\$" | sed -e 's|^.*http|http|g' | sort -V | tail -1 )"
+                #fi
+            fi
+
             read -r image_beta_url <<< "$image_beta_url"
             image_beta_version="${image_beta_url%/*}"
             image_beta_version="${image_beta_version##*/}"
@@ -323,20 +336,22 @@ main(){
                 fi
 
             else
-                # only beta available
-                if [[ -z "$image_stable_url" ]] ; then
-                    image_url="$image_beta_url"
-                    image_version="$image_beta_version"
-                    image_filename="$image_beta_filename"
-                    image_subdir="development"
-                fi
+                if [[ -n "$image_beta_url" ]] ; then
+                    # only beta available
+                    if [[ -z "$image_stable_url" ]] ; then
+                        image_url="$image_beta_url"
+                        image_version="$image_beta_version"
+                        image_filename="$image_beta_filename"
+                        image_subdir="development"
+                    fi
 
-                # only stable available
-                if [[ -z "$image_beta_url" ]] ; then
-                    image_url="$image_stable_url"
-                    image_version="$image_stable_version"
-                    image_filename="$image_stable_filename"
-                    image_subdir="stable"
+                    # only stable available
+                    if [[ -z "$image_beta_url" ]] ; then
+                        image_url="$image_stable_url"
+                        image_version="$image_stable_version"
+                        image_filename="$image_stable_filename"
+                        image_subdir="stable"
+                    fi
                 fi
             fi
 
