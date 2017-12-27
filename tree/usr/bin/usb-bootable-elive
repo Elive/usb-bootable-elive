@@ -444,7 +444,7 @@ main(){
 
                 # errors?
                 if grep -qs "No space left" "$TMP_ERROR_LOGS_f" "${TMP_PROGRESS_WORKING_f}" ; then
-                    guitool error "$( eval_gettext "No space left on device, please free some space in your disk before to run again this tool." )"
+                    guitool error "$( eval_gettext "No space left on device, please free some space on your disk before running this tool again." )"
                     rm -f "$image_filename"
                     cd
                     rm -rf "$cache_dir"
@@ -483,7 +483,7 @@ main(){
 
             # errors?
             if grep -qs "No space left" "$TMP_ERROR_LOGS_f" "${TMP_PROGRESS_WORKING_f}" ; then
-                guitool error "$( eval_gettext "No space left on device, please free some space in your disk before to run again this tool." )"
+                guitool error "$( eval_gettext "No space left on device, please free some space on your disk before running this tool again." )"
                 rm -f "$image_filename"
                 cd
                 rm -rf "$cache_dir"
@@ -603,7 +603,7 @@ main(){
     fi
 
     local message_congratulations
-    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used in any computer! Remember that some newer computers requires to disable the UEFI and Secure Boot modes, you can found more info about this on the Elive website." )" "" )"
+    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used on any computer! Remember that some newer computers requires to disable the UEFI and Secure Boot modes, you can found more info about this on the Elive website." )" "" )"
 
     if ((is_auto_mode)) ; then
         el_info "$message_congratulations"
