@@ -284,8 +284,9 @@ main(){
                 unset image_filename
                 unset is_image_given
             fi
-        else
+        fi
 
+        if ! ((is_image_given)) ; then
             # ask for img / iso
             if guitool question "$( eval_gettext "Do you want to use the IMG version? The IMG version can have persistence with encryption, but the ISO version can be compatible with rare hardware." )" ; then
                 image_extension="img"
