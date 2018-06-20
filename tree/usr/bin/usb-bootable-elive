@@ -42,7 +42,7 @@ else
     PROCCESS=" "
 fi
 if (ps up $PROCCESS) 1>/dev/null 2>&1 ; then
-    el_error "$(basename $0) already running"
+    NOREPORTS=1 el_error "$(basename $0) already running"
     exit
 else
     echo $$ > "$lockfile"
