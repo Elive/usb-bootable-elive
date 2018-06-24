@@ -13,6 +13,9 @@ TMP_ERROR_LOGS_f="${cache_dir}/logs-error.txt"
 wgetopts="--tries=40 --progress=dot:binary -c"
 #set -E
 
+# TODO: add an option for improve the health of the USB (filling it with zeroes, which sometimes are needed, more than we think!, which also guarantees the correct writting)
+# TODO: recyclate persistence and other partitions
+
 # Lock system (good one) {{{
 lockfile="/tmp/.$(basename $0)-${USER}.lock"
 
