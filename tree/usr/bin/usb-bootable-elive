@@ -86,7 +86,7 @@ generate_menu_selector(){
                 menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor " - "$5}' )")
             fi
         fi
-    done 3<<< "$( partitions-list --show-all --show-disks | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
+    done 3<<< "$( partitions-list --show-all --show-disks --show-raw | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
     # }}}
 }
 
@@ -548,7 +548,7 @@ main(){
     if ((is_auto_mode)) ; then
         if [[ "${#menu[@]}" -eq 3 ]] ; then
             if [[ -b "${menu[0]}" ]] ; then
-                image_device_size="$( partitions-list --show-disks --show-only="${menu[0]}" | awk -v FS="::" '{print $6 }' )"
+                image_device_size="$( partitions-list --show-disks --show-raw --show-only="${menu[0]}" | awk -v FS="::" '{print $6 }' )"
                 if [[ "$image_device_size" -gt 3500000000 ]] && [[ "$image_device_size" -lt 75000000000 ]] ; then
                     image_device="${menu[0]}"
                 else
