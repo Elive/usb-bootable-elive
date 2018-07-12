@@ -367,9 +367,10 @@ main(){
 
             # checks
             if [[ -z "$image_url" ]] ; then
-                guitool error "$( eval_gettext "No versions of Elive for USB available found from the website." )"
-                el_error "no versions found on the website"
-                exit 1
+                #guitool error "$( eval_gettext "No versions of Elive for USB available found from the website." )"
+                guitool info "$( eval_gettext "Download manually first the version of Elive that you want to use. Then use it with this tool to record your media with it." )"
+                #el_error "no versions found on the website"
+                exit 0
             fi
 
             # get redirector, specially needed for zsync to work
