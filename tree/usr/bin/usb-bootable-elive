@@ -600,14 +600,15 @@ main(){
             message_recording="$( printf "$( eval_gettext "Recording %s to your %s device" )" "${image_version}" "$image_device" )"
         fi
 
-        # recyclate persistence partition
+        # recyclate persistence partition?
         # TODO:
         # ask
         # cryptsetup support, detect too
         buf="$( partitions-list --show-all --show-disks --show-raw | awk -v FS="::" '{if ($3 != "swap") print $0}' | grep "^${image_device}" )"
-        if echo "$buf" | grep -qs "persistence" ; then
+        if echo "$buf" | grep -qsE "(persistence|crypto_LUKS)" ; then
             if echo "$buf" | grep -qsi "Live_BOOT" ; then
                 if echo "$buf" | grep -qsi "Live_OS" ; then
+                    persistence_partition="$( partitions-list --show-all 2>/dev/null | grep -E "^${image_device}.*::(persistence|crypto_LUKS)::" | awk -v FS="::" '{print $1}' | tail -1 )"
                     is_persistence_included=1
                 fi
             fi
@@ -619,7 +620,7 @@ main(){
                     NOREPORTS=1 el_error "You have a persistence partition included, use with -f to force recording of USB (will delete persistence)"
                 fi
             else
-                if ! guitool question "$( eval_gettext "You have a persistence partition included on this USB, do you want to continue and lose all the data of this partition? You will need to create a new, empty one." )" ; then
+                if ! guitool question "$( eval_gettext "You have a persistence partition included on this USB, if you continue you will lose all the data inside it like your users and files, do you want to continue?" )" ; then
                     exit
                 fi
             fi
