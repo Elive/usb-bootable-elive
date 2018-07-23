@@ -80,7 +80,7 @@ generate_menu_selector(){
             id_vendor="$( /sbin/udevadm info --query=property --name="$part" | grep "ID_VENDOR_ID=" | sed -e 's|^.*VENDOR_ID=||g' )"
             id_vendor="$( lsusb | grep "ID ${id_vendor}:" | sed -e "s|^.*${id_vendor}:||g" | awk '{print $2" "$3}' )"
 
-            if echo "$entry" | awk -v FS="::" '{print $5}' | grep -qsE "(no name|swap)" ; then
+            if echo "$entry" | awk -v FS="::" '{print $5}' | grep -qsE "(no name|swap|unformatted)" ; then
                 menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor}' )")
             else
                 menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor " - "$5}' )")
@@ -253,6 +253,9 @@ main(){
             --help)
                 usage
                 exit
+                ;;
+            -f|--force)
+                is_mode_force=1
                 ;;
         esac
 
@@ -597,6 +600,30 @@ main(){
             message_recording="$( printf "$( eval_gettext "Recording %s to your %s device" )" "${image_version}" "$image_device" )"
         fi
 
+        # recyclate persistence partition
+        # TODO:
+        # ask
+        # cryptsetup support, detect too
+        buf="$( partitions-list --show-all --show-disks --show-raw | awk -v FS="::" '{if ($3 != "swap") print $0}' | grep "^${image_device}" )"
+        if echo "$buf" | grep -qs "persistence" ; then
+            if echo "$buf" | grep -qsi "Live_BOOT" ; then
+                if echo "$buf" | grep -qsi "Live_OS" ; then
+                    is_persistence_included=1
+                fi
+            fi
+        fi
+
+        if ((is_persistence_included)) ; then
+            if ((is_auto_mode)) ; then
+                if ! ((is_mode_force)) ; then
+                    NOREPORTS=1 el_error "You have a persistence partition included, use with -f to force recording of USB (will delete persistence)"
+                fi
+            else
+                if ! guitool question "$( eval_gettext "You have a persistence partition included on this USB, do you want to continue and lose all the data of this partition? You will need to create a new, empty one." )" ; then
+                    exit
+                fi
+            fi
+        fi
         if ((is_auto_mode)) ; then
             el_info "$message_recording"
         else
