@@ -618,6 +618,7 @@ main(){
             if ((is_auto_mode)) ; then
                 if ! ((is_mode_force)) ; then
                     NOREPORTS=1 el_error "You have a persistence partition included, use with -f to force recording of USB (will delete persistence)"
+                    exit 1
                 fi
             else
                 if ! guitool question "$( eval_gettext "You have a persistence partition included on this USB, if you continue you will lose all the data inside it like your users and files, do you want to continue?" )" ; then
