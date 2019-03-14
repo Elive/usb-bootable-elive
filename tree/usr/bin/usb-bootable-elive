@@ -133,6 +133,19 @@ guitool(){
             $guitool --warning --text="$message"
 
             ;;
+        working_write_progress)
+            if ((is_auto_mode)) ; then
+                return
+            fi
+
+            echo "1" > "$TMP_PROGRESS_WORKING_f"
+            sync
+
+            message_doing_magic="$( eval_gettext "Transferring bytes at the speed of light..." )"
+
+            { ( while test -f "${TMP_PROGRESS_WORKING_f}" ; do cat "$TMP_PROGRESS_WORKING_f" || true ; LC_ALL=C sleep 0.4 ; done | $guitool --progress --text="$message_doing_magic" --auto-close ) & disown ; } 1>/dev/null
+
+            ;;
         working_start)
             if ((is_auto_mode)) ; then
                 return
@@ -228,7 +241,7 @@ main(){
             --auto)
                 is_auto_mode=1
                 ;;
-            *.img|*.IMG|*.iso|*.ISO)
+            *.img|*.IMG|*.iso|*.ISO|*.img.gz|*.IMG.GZ|*.iso.gz|*.ISO.GZ|*.img.bz2|*.IMG.BZ2|*.iso.bz2|*.ISO.BZ2|*.img.xz|*.IMG.XZ|*.iso.xz|*.ISO.XZ|*.img.lzma|*.IMG.LZMA|*.iso.lzma|*.ISO.LMZA)
                 image_filename="$arg"
 
                 # verify
@@ -249,6 +262,10 @@ main(){
                 if [[ "$image_filename" != /* ]] ; then
                     image_filename="$(pwd)/$image_filename"
                 fi
+
+                # get size
+                image_filename_size="$( du -s "$image_filename" | awk '{print $1}' )"
+                el_debug "filename size is ${image_filename_size}"
                 ;;
             --help)
                 usage
@@ -273,7 +290,8 @@ main(){
 
 
     if ! ((is_auto_mode)) ; then
-        if ! guitool question "$( eval_gettext "This tool will create an USB bootable media that you can use for boot Elive in any computer, all the data inside the USB is going to be deleted. Do you want to continue?" )" ; then
+        #if ! guitool question "$( eval_gettext "This tool will create an USB bootable media that you can use for boot Elive in any computer, all the data inside the USB is going to be deleted. Do you want to continue?" )" ; then
+        if ! guitool question "$( eval_gettext "This tool will record your USB with an ISO or image file, downloading itself the last version of Elive, or you can also use it to record any operating system with it. After that you will be able to boot a computer from this USB." )" ; then
             exit
         fi
     fi
@@ -541,7 +559,7 @@ main(){
 
     # not inserted ? do it!
     if [[ "${#menu[@]}" -lt 3 ]] ; then
-        guitool info "$( eval_gettext "Please insert the USB where to record Elive before to continue." )"
+        guitool info "$( eval_gettext "Please insert the desired USB before to continue." )"
 
         generate_menu_selector
         if [[ "${#menu[@]}" -lt 3 ]] ; then
@@ -569,7 +587,7 @@ main(){
     fi
 
     local message_select_usb
-    message_select_usb="$( printf "$( eval_gettext "Select the USB where to record Elive, all the data and partitions inside will be permanently deleted." )" "" )"
+    message_select_usb="$( printf "$( eval_gettext "Select the USB device where to record the system. All the data and partitions inside will be permanently deleted!" )" "" )"
 
     if ! [[ -n "$image_device" ]] || ! [[ -b "$image_device" ]] ; then
         image_device="$( $guitool --list --height=300 --width=600 --text="$message_select_usb" --column="$( eval_gettext "Device" )" --column="$( eval_gettext "Size" )" --column="$( eval_gettext "Details" )" "${menu[@]}" || echo cancel )"
@@ -629,17 +647,56 @@ main(){
         if ((is_auto_mode)) ; then
             el_info "$message_recording"
         else
-            guitool working_start "$message_recording"
+            guitool working_stop
+            guitool working_write_progress
         fi
 
-        if ! dd if="$image_filename" of="$image_device" bs=8M 1>/dev/null 2>&1 ; then
-            guitool error "$( eval_gettext "Error recording USB" )"
-            el_error "dd was unable to write"
+        # checks {{{
+        if ! [[ -n "$image_filename_size" ]] ; then
+            el_error "image given '${image_filename}' has no size?"
             exit 1
+        fi
+        # }}}
+
+        case "$image_filename" in
+            *".gz"|*".GZ")
+                command_cat="zcat"
+                ;;
+            *".bz2"|*".BZ2")
+                command_cat="bzcat"
+                ;;
+            *".lzma"|*".LZMA")
+                command_cat="lzcat"
+                ;;
+            *".xz"|*".XZ")
+                command_cat="xzcat"
+                ;;
+            *)
+                command_cat="cat"
+                ;;
+        esac
+
+
+        el_debug "Running command: $command_cat \"$image_filename\" | pv -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=4M "
+
+        # for debug only (with no real writing):
+        #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M ; then
+
+        if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M 1>/dev/null 2>&1 ; then
+            echo "100" >> "$TMP_PROGRESS_WORKING_f"
+        else
+            is_record_failed=1
         fi
         sync
 
         guitool working_stop
+
+        # show possible errors found
+        if ((is_record_failed)) ; then
+            el_error "dd was unable to write"
+            guitool error "$( eval_gettext "Error recording USB" ). $( eval_gettext "This can be caused by a bad quality USB or because its too small. Our recommendation for a good quality device is for example the Sandisk Ultra, which is cheap and so fast that can make Persistence working light and responsive." )"
+            exit 1
+        fi
     fi
 
     local message_congratulations
