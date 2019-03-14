@@ -141,7 +141,30 @@ guitool(){
             echo "1" > "$TMP_PROGRESS_WORKING_f"
             sync
 
-            message_doing_magic="$( eval_gettext "Transferring bytes at the speed of light..." )"
+            if [[ -n "$message" ]] ; then
+                message_doing_magic="$message"
+            else
+                # random message generator
+                message_doing_magic="$( eval_gettext "Elive is doing some magic..." )"
+                # random message generator
+                case "$( shuf -i 1-5 -n 1 )" in
+                    1)
+                        message_doing_magic="$( eval_gettext "Elive is doing some magic..." )"
+                        ;;
+                    2)
+                        message_doing_magic="$( eval_gettext "Transferring bytes at the speed of light..." )"
+                        ;;
+                    3)
+                        message_doing_magic="$( eval_gettext "Arranging some atoms in the universe..." )"
+                        ;;
+                    4)
+                        message_doing_magic="$( eval_gettext "Mutating frogs with unicorns..." )"
+                        ;;
+                    5)
+                        message_doing_magic="Dancing 'Staying Elive' by the Bee Gees..."
+                        ;;
+                esac
+            fi
 
             { ( while test -f "${TMP_PROGRESS_WORKING_f}" ; do cat "$TMP_PROGRESS_WORKING_f" || true ; LC_ALL=C sleep 0.4 ; done | $guitool --progress --text="$message_doing_magic" --auto-close ) & disown ; } 1>/dev/null
 
