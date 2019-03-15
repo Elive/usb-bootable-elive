@@ -699,6 +699,8 @@ main(){
                 ;;
         esac
 
+        # add a 10% to the real size to never show 100 until we really finished
+        image_filename_size="$( echo "scale=0; (${image_filename_size} / 100) * 110" | bc -l )"
 
         el_debug "Running command: $command_cat \"$image_filename\" | pv -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=4M "
 
@@ -706,6 +708,7 @@ main(){
         #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M ; then
 
         if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M 1>/dev/null 2>&1 ; then
+            sync
             echo "100" >> "$TMP_PROGRESS_WORKING_f"
         else
             is_record_failed=1
