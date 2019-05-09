@@ -329,6 +329,7 @@ main(){
             if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] && ! [[ -z "$image_filename" ]] ; then
                 is_image_given=1
                 image_version="$( echo "$image_filename" | sed -e 's|^.*/||g' -e 's|elive_||g' -e 's|_.*$||g' )"
+                image_filename_size="$( du -s "$image_filename" | awk '{print $1}' )"
                 if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
                     image_version="$( basename "$image_filename" )"
                     guitool info "$( eval_gettext "This doesn't looks like to be a normal Elive version, but we will try to use it anyway." )"
@@ -675,6 +676,9 @@ main(){
         fi
 
         # checks {{{
+        if [[ -z "$image_filename_size" ]] ;then
+            image_filename_size="$( du -s "$image_filename" | awk '{print $1}' )"
+        fi
         if ! [[ -n "$image_filename_size" ]] ; then
             el_error "image given '${image_filename}' has no size?"
             exit 1
