@@ -248,6 +248,8 @@ usage(){
     echo -e "$(basename $0) can record an ISO/IMG to a USB, compatible with most of images / isos even not Elive ones, the tool is interactive unless:"
     echo -e "\nOptions:"
     echo -e "--auto              Do not ask for USB device, just use the one that you have actually inserted"
+    echo -e "--simulate          Simulation mode, does not write real data to the device"
+    echo -e "--force             Force writing, required when a persistence partition is found"
     echo -e "elive.iso|img       Use the given image to record"
     # - options }}}
 }
@@ -614,6 +616,8 @@ main(){
                 guitool error "$( eval_gettext "No USB thumbdrives where found." )"
                 exit 1
             fi
+
+            is_hd_included=1
         else
             exit 1
         fi
@@ -694,7 +698,6 @@ main(){
             el_info "$message_recording"
         else
             guitool working_stop
-            guitool working_write_progress
         fi
 
         # checks {{{
@@ -733,17 +736,26 @@ main(){
         # for debug only (with no real writing):
         #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M ; then
 
+        # confirm write
+        if ((is_hd_included)) && ! guitool question "$( eval_gettext "You selected to write into a hard disk instead of a USB memory, this is dangerous if you selected the wrong one. Do you want to continue? This disk is going to be entirely erased:" ) ${image_device}" ; then
+            exit 1
+        fi
+
         if ((is_mode_simulate)) ; then
             el_info "simulated recording to the disk '${image_device}' "
             for i in $(seq 10)
             do
                 echo "${i}0" >> ${TMP_PROGRESS_WORKING_f}
-                LC_ALL=C sleep 0.3
+                LC_ALL=C sleep 0.4
             done
         else
+            # show gui
+            guitool working_write_progress
+
             # first: erase headers to clean trashy bytes
             echo "1" >> "$TMP_PROGRESS_WORKING_f"
-            dd if=/dev/zero of="$image_device" bs=8M count=14
+            dd if=/dev/zero of="$image_device" bs=8M count=16  1>/dev/null
+
             # record the system
             if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M 1>/dev/null 2>&1 ; then
                 sync
