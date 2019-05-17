@@ -63,6 +63,12 @@ echo "$$" > "$lockfile"
 generate_menu_selector(){
     # build menu variable from partitions list {{{
     #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
+    if [[ "$1" = "include_hd" ]] ; then
+        regex_matches="^(ID_USB_DRIVER=usb-storage|ID_TYPE=disk)$"
+    else
+        regex_matches="^(ID_USB_DRIVER=usb-storage)$"
+    fi
+
     unset menu id_vendor
     while read -ru 3 entry
     do
@@ -73,12 +79,15 @@ generate_menu_selector(){
             continue
         fi
 
-        if /sbin/udevadm info --query=property --name="$part" | grep -qs "ID_USB_DRIVER=usb-storage" ; then
+        if /sbin/udevadm info --query=property --name="$part" | grep -qsE "$regex_matches" ; then
             # create an array for use in the menu, with one per line
             menu+=("$( echo "$entry" | awk -v FS="::" '{print $1}' )")
             menu+=("$( echo "$entry" | awk -v FS="::" '{print $7}' )")
             id_vendor="$( /sbin/udevadm info --query=property --name="$part" | grep "ID_VENDOR_ID=" | sed -e 's|^.*VENDOR_ID=||g' )"
             id_vendor="$( lsusb | grep "ID ${id_vendor}:" | sed -e "s|^.*${id_vendor}:||g" | awk '{print $2" "$3}' )"
+            if [[ -z "$id_vendor" ]] ; then
+                id_vendor="$( /sbin/udevadm info --query=property --name="$part" | grep "ID_MODEL=" | sed -e 's|^.*ID_MODEL=||g' | awk '{print $1" "$2}' )"
+            fi
 
             if echo "$entry" | awk -v FS="::" '{print $5}' | grep -qsE "(no name|swap|unformatted)" ; then
                 menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor}' )")
@@ -259,6 +268,7 @@ main(){
                 echo -e " * if you give the image as parameter, it will not download it but use the given one"
                 echo -e "Example: $(basename $0) --auto elive_2.9.12_beta_usb.img"
                 echo -e "Note: this tool can be used to record most of linux distro's in USB too"
+                echo -e "Other options: -s for simulate, -f for force writing"
                 exit
                 ;;
             --auto)
@@ -296,6 +306,9 @@ main(){
                 ;;
             -f|--force)
                 is_mode_force=1
+                ;;
+            -s|--simulate)
+                is_mode_simulate=1
                 ;;
         esac
 
@@ -593,8 +606,17 @@ main(){
     fi
 
     if [[ "${#menu[@]}" -lt 3 ]] ; then
-        guitool error "$( eval_gettext "No USB thumbdrives where found." )"
-        exit 1
+        #guitool error "$( eval_gettext "No USB thumbdrives where found." )"
+        if guitool question "$( eval_gettext "No USB thumb drives found. Do you want to include the results of hard disks? (use this option with caution, it can destroy your computer's data if you select the wrong disk)" )" ; then
+
+            generate_menu_selector "include_hd"
+            if [[ "${#menu[@]}" -lt 3 ]] ; then
+                guitool error "$( eval_gettext "No USB thumbdrives where found." )"
+                exit 1
+            fi
+        else
+            exit 1
+        fi
     fi
 
     if ((is_auto_mode)) ; then
@@ -711,13 +733,26 @@ main(){
         # for debug only (with no real writing):
         #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M ; then
 
-        if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M 1>/dev/null 2>&1 ; then
-            sync
-            echo "100" >> "$TMP_PROGRESS_WORKING_f"
+        if ((is_mode_simulate)) ; then
+            el_info "simulated recording to the disk '${image_device}' "
+            for i in $(seq 10)
+            do
+                echo "${i}0" >> ${TMP_PROGRESS_WORKING_f}
+                LC_ALL=C sleep 0.3
+            done
         else
-            is_record_failed=1
+            # first: erase headers to clean trashy bytes
+            echo "1" >> "$TMP_PROGRESS_WORKING_f"
+            dd if=/dev/zero of="$image_device" bs=8M count=14
+            # record the system
+            if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M 1>/dev/null 2>&1 ; then
+                sync
+                echo "100" >> "$TMP_PROGRESS_WORKING_f"
+            else
+                is_record_failed=1
+            fi
+            sync
         fi
-        sync
 
         guitool working_stop
 
