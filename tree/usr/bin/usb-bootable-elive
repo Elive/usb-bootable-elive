@@ -754,7 +754,7 @@ main(){
 
             # first: erase headers to clean trashy bytes
             echo "1" >> "$TMP_PROGRESS_WORKING_f"
-            dd if=/dev/zero of="$image_device" bs=8M count=16  1>/dev/null
+            dd if=/dev/zero of="$image_device" bs=8M count=16  2>/dev/null
 
             # record the system
             if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M 1>/dev/null 2>&1 ; then
