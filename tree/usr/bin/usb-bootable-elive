@@ -800,6 +800,11 @@ main(){
     fi
 
     # - delete images if low space }}}
+
+    # notify
+    if ((is_terminal)) ; then
+        echo -e "\a"
+    fi
 }
 
 
