@@ -270,7 +270,7 @@ main(){
                 echo -e " * if you give the image as parameter, it will not download it but use the given one"
                 echo -e "Example: $(basename $0) --auto elive_2.9.12_beta_usb.img"
                 echo -e "Note: this tool can be used to record most of linux distro's in USB too"
-                echo -e "Other options: -s for simulate, -f for force writing"
+                echo -e "Other options: -s for simulate, -f for force writing, -c for cleanup (full fill with zeroes first)"
                 exit
                 ;;
             --auto)
@@ -301,6 +301,9 @@ main(){
                 # get size
                 image_filename_size="$( du -s "$image_filename" | awk '{print $1}' )"
                 el_debug "filename size is ${image_filename_size}"
+                ;;
+            -c|--clean)
+                is_full_rewrite=1
                 ;;
             --help)
                 usage
@@ -749,12 +752,20 @@ main(){
                 LC_ALL=C sleep 0.4
             done
         else
+            # full write zeroes
+            if ((is_full_rewrite)) ; then
+                guitool working_start "$( eval_gettext "Please be patient, to write the USB entirely with zeroes is a very slow task. This operation will repair or improve the reliability of your USB media." )"
+                dd if=/dev/zero of="$image_device" bs=4M  2>/dev/null
+                guitool working_stop
+            fi
+
             # show gui
             guitool working_write_progress
 
             # first: erase headers to clean trashy bytes
             echo "1" >> "$TMP_PROGRESS_WORKING_f"
-            dd if=/dev/zero of="$image_device" bs=8M count=16  2>/dev/null
+            dd if=/dev/zero of="$image_device" bs=4M count=16  2>/dev/null
+
 
             # record the system
             if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M 1>/dev/null 2>&1 ; then
