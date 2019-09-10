@@ -764,7 +764,7 @@ main(){
 
             # first: erase headers to clean trashy bytes
             echo "1" >> "$TMP_PROGRESS_WORKING_f"
-            dd if=/dev/zero of="$image_device" bs=4M count=16  2>/dev/null
+            dd if=/dev/zero of="$image_device" bs=4M count=32  2>/dev/null
 
 
             # record the system
