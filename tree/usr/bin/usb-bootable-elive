@@ -632,6 +632,11 @@ main(){
                 image_device_size="$( partitions-list --show-disks --show-raw --show-only="${menu[0]}" | awk -v FS="::" '{print $6 }' )"
                 if [[ "$image_device_size" -gt 3500000000 ]] && [[ "$image_device_size" -lt 75000000000 ]] ; then
                     image_device="${menu[0]}"
+
+                    # confirm needed
+                    if ! el_confirm "Detected USB as ${image_device}, record on this one?" ; then
+                        unset image_device
+                    fi
                 else
                     el_info "Device '${menu[0]}' named '${menu[2]}' has a size of '${image_device_size}' which is not common in USB sticks, switching to manual mode..."
                 fi
