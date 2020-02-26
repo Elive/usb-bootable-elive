@@ -175,7 +175,7 @@ guitool(){
                 esac
             fi
 
-            { ( while test -f "${TMP_PROGRESS_WORKING_f}" ; do cat "$TMP_PROGRESS_WORKING_f" || true ; LC_ALL=C sleep 0.4 ; done | $guitool --progress --text="$message_doing_magic" --auto-close ) & disown ; } 1>/dev/null
+            { ( while test -f "${TMP_PROGRESS_WORKING_f}" ; do cat "$TMP_PROGRESS_WORKING_f" || true ; LC_ALL=C sleep 0.4 ; done | $guitool --progress --text="$message_doing_magic" --auto-close --no-cancel ) & disown ; } 1>/dev/null
 
             ;;
         working_start)
@@ -299,7 +299,7 @@ main(){
                 fi
 
                 # get size
-                image_filename_size="$( du -s "$image_filename" | awk '{print $1}' )"
+                image_filename_size="$( du -Ls "$image_filename" | awk '{print $1}' )"
                 el_debug "filename size is ${image_filename_size}"
                 ;;
             -c|--clean)
@@ -347,7 +347,7 @@ main(){
             if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] && ! [[ -z "$image_filename" ]] ; then
                 is_image_given=1
                 image_version="$( echo "$image_filename" | sed -e 's|^.*/||g' -e 's|elive_||g' -e 's|_.*$||g' )"
-                image_filename_size="$( du -s "$image_filename" | awk '{print $1}' )"
+                image_filename_size="$( du -Ls "$image_filename" | awk '{print $1}' )"
                 if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
                     image_version="$( basename "$image_filename" )"
                     guitool info "$( eval_gettext "This doesn't looks like to be a normal Elive version, but we will try to use it anyway." )"
@@ -710,7 +710,7 @@ main(){
 
         # checks {{{
         if [[ -z "$image_filename_size" ]] ;then
-            image_filename_size="$( du -s "$image_filename" | awk '{print $1}' )"
+            image_filename_size="$( du -Ls "$image_filename" | awk '{print $1}' )"
         fi
         if ! [[ -n "$image_filename_size" ]] ; then
             el_error "image given '${image_filename}' has no size?"
@@ -737,7 +737,7 @@ main(){
         esac
 
         # add a 10% to the real size to never show 100 until we really finished
-        image_filename_size="$( echo "scale=0; (${image_filename_size} / 100) * 110" | bc -l )"
+        image_filename_size="$( echo "(${image_filename_size} / 100) * 115" | bc -l | sed -e 's|\..*$||g' )"
 
         el_debug "Running command: $command_cat \"$image_filename\" | pv -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=4M "
 
@@ -774,7 +774,9 @@ main(){
 
             # record the system
             if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M 1>/dev/null 2>&1 ; then
+                el_debug="Last percent wrote speculated as:\n$( tail -n 4 "${TMP_PROGRESS_WORKING_f}" )"
                 sync
+                sleep 1
                 echo "100" >> "$TMP_PROGRESS_WORKING_f"
             else
                 is_record_failed=1
