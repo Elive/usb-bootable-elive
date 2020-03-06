@@ -175,7 +175,7 @@ guitool(){
                 esac
             fi
 
-            { ( while test -f "${TMP_PROGRESS_WORKING_f}" ; do cat "$TMP_PROGRESS_WORKING_f" || true ; LC_ALL=C sleep 0.4 ; done | $guitool --progress --text="$message_doing_magic" --auto-close --no-cancel ) & disown ; } 1>/dev/null
+            { ( while test -f "${TMP_PROGRESS_WORKING_f}" ; do tail -n 1 "$TMP_PROGRESS_WORKING_f" || true ; LC_ALL=C sleep 0.4 ; done | $guitool --progress --text="$message_doing_magic" --auto-close --no-cancel ) & disown ; } 1>/dev/null
 
             ;;
         working_start)
@@ -217,7 +217,7 @@ guitool(){
                 esac
             fi
 
-            { ( while test -s "$TMP_PROGRESS_WORKING_f" ; do echo 10 ; cat "$TMP_PROGRESS_WORKING_f" || true ; sleep 1 ; done | $guitool --progress --text="$message_doing_magic" --pulsate --auto-close ) & disown ; } 2>/dev/null
+            { ( while test -s "$TMP_PROGRESS_WORKING_f" ; do echo 10 ; tail -n 1 "$TMP_PROGRESS_WORKING_f" || true ; sleep 1 ; done | $guitool --progress --text="$message_doing_magic" --pulsate --auto-close ) & disown ; } 2>/dev/null
 
             ;;
         working_stop)
