@@ -788,7 +788,7 @@ main(){
 
         # show possible errors found
         if ((is_record_failed)) ; then
-            el_error "dd was unable to write\n$(dmesg | grep -i error | tail -4)"
+            el_error "dd was unable to write. Image size '${image_filename_size}', Device size '${image_device_size}' \n$(dmesg | grep -i error | tail -4)"
             guitool error "$( eval_gettext "Error recording USB" ). $( eval_gettext "This can be caused by a bad quality USB or because it's too small. Our recommendation for a good quality device is for example the model Sandisk Ultra and to have at least 8GB, which is cheap and so fast that can make Persistence working light and responsive. You can also run this tool from a terminal with the option to perform a full clean, as:" )  $(basename "$0" ) --clean"
             exit 1
         fi
