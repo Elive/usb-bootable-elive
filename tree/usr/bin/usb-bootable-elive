@@ -822,7 +822,7 @@ main(){
     # - delete images if low space }}}
 
     # notify
-    if ((is_terminal)) ; then
+    if ((is_interactive)) ; then
         echo -e "\a"
     fi
 }
