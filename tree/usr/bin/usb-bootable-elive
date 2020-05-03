@@ -115,7 +115,7 @@ guitool(){
     mode="$1"
     message="$2"
 
-    el_check_variables "mode,guitool"
+    el_check_variables "mode|guitool"
 
     #el_debug "    $FUNCNAME $@"
 
@@ -261,7 +261,7 @@ main(){
     local url_image_stable url_image_beta menu id_vendor
 
 
-    el_dependencies_check "dd,lynx,wget,zsync"
+    el_dependencies_check "dd|lynx|wget|zsync"
 
     for arg in "$@"
     do
