@@ -146,7 +146,7 @@ guitool(){
             ;;
         working_write_progress)
             if ((is_auto_mode)) ; then
-                return
+                return 0
             fi
 
             echo "1" > "$TMP_PROGRESS_WORKING_f"
@@ -182,11 +182,11 @@ guitool(){
             ;;
         working_start)
             if ((is_auto_mode)) ; then
-                return
+                return 0
             fi
             # already running? keep it running instead of creating a new one
             if [[ -s "$TMP_PROGRESS_WORKING_f" ]] || ((is_guitool_working_running)) ; then
-                return
+                return 0
             fi
 
             echo working > "$TMP_PROGRESS_WORKING_f"
@@ -224,7 +224,7 @@ guitool(){
             ;;
         working_stop)
             if ((is_auto_mode)) ; then
-                return
+                return 0
             fi
             rm -f "$TMP_PROGRESS_WORKING_f"
             unset is_guitool_working_running
