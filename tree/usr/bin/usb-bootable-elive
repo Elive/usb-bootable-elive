@@ -669,6 +669,10 @@ main(){
         fi
     fi
 
+    # get the size of the device
+    if [[ -z "$image_device_size" ]] ; then
+        image_device_size="$( partitions-list --show-disks --show-raw --show-only="$image_device" | awk -v FS="::" '{print $6 }' )"
+    fi
     # - select device to record Elive }}}
 
     # record Elive to device {{{
@@ -677,6 +681,15 @@ main(){
         message_recording="$( printf "$( eval_gettext "Recording Elive %s to your %s device" )" "$image_version" "$image_device" )"
         if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
             message_recording="$( printf "$( eval_gettext "Recording %s to your %s device" )" "${image_version}" "$image_device" )"
+        fi
+
+        # check if size is enough
+        if [[ -n "$image_device_size" ]] && [[ -n "$image_filename_size" ]] && [[ "${image_device_size}" -lt "${image_filename_size}000" ]] ; then
+            el_warning "temporal report: USB is smaller than image to record: image is '${image_filename_size}' and device is '${image_device_size}'"
+
+            if ! guitool question "$( eval_gettext "The size detected in your USB appears to be smaller than the size of the image you want to record on it. Do you want to continue?" )" ; then
+                exit
+            fi
         fi
 
         # recyclate persistence partition?
