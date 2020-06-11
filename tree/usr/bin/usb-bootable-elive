@@ -339,6 +339,8 @@ main(){
         fi
     fi
 
+    el_check_translations_required "report"
+
     # }}}
 
     # select version {{{
