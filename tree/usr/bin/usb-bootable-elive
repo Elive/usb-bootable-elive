@@ -522,7 +522,7 @@ main(){
 
                 # errors?
                 if grep -qs "No space left" "$TMP_ERROR_LOGS_f" "${TMP_PROGRESS_WORKING_f}" ; then
-                    guitool error "$( eval_gettext "No space left on device, please free some space on your disk before running this tool again." )"
+                    guitool error "$( eval_gettext "No space left on the device. Please free some space on your disk and then run again this tool." )"
                     rm -f "$image_filename"
                     cd
                     rm -rf "$cache_dir"
@@ -561,7 +561,7 @@ main(){
 
             # errors?
             if grep -qs "No space left" "$TMP_ERROR_LOGS_f" "${TMP_PROGRESS_WORKING_f}" ; then
-                guitool error "$( eval_gettext "No space left on device, please free some space on your disk before running this tool again." )"
+                guitool error "$( eval_gettext "No space left on the device. Please free some space on your disk and then run again this tool." )"
                 rm -f "$image_filename"
                 cd
                 rm -rf "$cache_dir"
