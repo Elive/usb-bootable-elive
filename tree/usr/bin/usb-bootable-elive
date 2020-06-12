@@ -813,7 +813,7 @@ main(){
     fi
 
     local message_congratulations
-    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used on any computer! Remember that some newer computers requires to disable the UEFI and Secure Boot modes, you can found more info about this on the Elive website." )" "" )"
+    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used on any computer! Remember that some newer computers requires to disable the UEFI and Secure Boot modes, you can find all the detailed information about this on the Elive website." )" "" )"
 
     if ((is_auto_mode)) ; then
         el_info "$message_congratulations"
