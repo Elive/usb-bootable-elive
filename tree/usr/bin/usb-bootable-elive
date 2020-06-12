@@ -616,7 +616,7 @@ main(){
 
     if [[ "${#menu[@]}" -lt 3 ]] ; then
         #guitool error "$( eval_gettext "No USB thumbdrives where found." )"
-        if guitool question "$( eval_gettext "No USB thumb drives found. Do you want to include the results of hard disks? (use this option with caution, it can destroy your computer's data if you select the wrong disk)" )" ; then
+        if guitool question "$( eval_gettext "No USB thumb drives found. Do you want to show all the available hard disks? (use this option with caution, you can destroy all your computer's data if you select the wrong disk)" )" ; then
 
             generate_menu_selector "include_hd"
             if [[ "${#menu[@]}" -lt 3 ]] ; then
