@@ -345,7 +345,7 @@ main(){
 
     # select version {{{
     if ! ((is_image_given)) ; then
-        if guitool question "$( eval_gettext "Do you have an already downloaded Elive version? Otherwise we will download the last one." )" ; then
+        if guitool question "$( eval_gettext "Do you have an already downloaded Elive version? Otherwise we will try to download the last available one." )" ; then
             image_filename="$( $guitool --file-selection --filename="$( xdg-user-dir DOWNLOAD )/" --file-filter="*.img *.IMG *.iso *.ISO" || echo cancel )"
 
             if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] && ! [[ -z "$image_filename" ]] ; then
