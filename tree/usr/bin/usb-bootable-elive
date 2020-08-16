@@ -334,7 +334,7 @@ main(){
 
     if ! ((is_auto_mode)) ; then
         #if ! guitool question "$( eval_gettext "This tool will create an USB bootable media that you can use for boot Elive in any computer, all the data inside the USB is going to be deleted. Do you want to continue?" )" ; then
-        if ! guitool question "$( eval_gettext "This tool will record your USB with an ISO image file, downloading itself the last version of Elive, or you can also use it to record any operating system with it. After that you will be able to boot a computer from this USB." )" ; then
+        if ! guitool question "$( eval_gettext "This tool will record your USB with an ISO image file, downloading itself the latest version of Elive, or you can also use it to record any operating system with it. After that you will be able to boot a computer from this USB." )" ; then
             exit
         fi
     fi
@@ -354,7 +354,7 @@ main(){
                 image_filename_size="$( du -Ls "$image_filename" | awk '{print $1}' )"
                 if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
                     image_version="$( basename "$image_filename" )"
-                    guitool info "$( eval_gettext "This doesn't looks like to be a normal Elive version, but we will record it anyway." )"
+                    guitool info "$( eval_gettext "This doesn't look like a normal Elive version, but we will record it anyway." )"
                 fi
             else
                 unset image_filename
@@ -400,7 +400,7 @@ main(){
 
             if [[ -n "$image_stable_url" ]] && [[ -n "$image_beta_url" ]] ; then
                 # ask version to use
-                if guitool question "$( eval_gettext "Do you want to use the last Beta version instead of the Stable one?" )" ; then
+                if guitool question "$( eval_gettext "Do you want to use the latest Beta version instead of the Stable one?" )" ; then
                     image_url="$image_beta_url"
                     image_version="$image_beta_version"
                     image_filename="$image_beta_filename"
@@ -522,7 +522,7 @@ main(){
 
                 # errors?
                 if grep -qs "No space left" "$TMP_ERROR_LOGS_f" "${TMP_PROGRESS_WORKING_f}" ; then
-                    guitool error "$( eval_gettext "No space left on the device. Please free some space on your disk and then run again this tool." )"
+                    guitool error "$( eval_gettext "No space left on the device. Please free some space on your disk and then run this tool again." )"
                     rm -f "$image_filename"
                     cd
                     rm -rf "$cache_dir"
@@ -535,7 +535,7 @@ main(){
                     is_checksum_ok=1
                     rm -rf old/
                 else
-                    guitool error "$( eval_gettext "The integrity verification doesn't match. Run again this tool for try with a new download." )"
+                    guitool error "$( eval_gettext "The integrity verification doesn't match. Run this tool again to try with a new download." )"
                     el_error "md5 verification failed"
                     exit 1
                 fi
@@ -561,7 +561,7 @@ main(){
 
             # errors?
             if grep -qs "No space left" "$TMP_ERROR_LOGS_f" "${TMP_PROGRESS_WORKING_f}" ; then
-                guitool error "$( eval_gettext "No space left on the device. Please free some space on your disk and then run again this tool." )"
+                guitool error "$( eval_gettext "No space left on the device. Please free some space on your disk and then run this tool again." )"
                 rm -f "$image_filename"
                 cd
                 rm -rf "$cache_dir"
@@ -584,7 +584,7 @@ main(){
                 is_checksum_ok=1
             else
                 rm -f "$image_filename"
-                guitool error "$( eval_gettext "The integrity verification doesn't match. Run again this tool for try with a new download." )"
+                guitool error "$( eval_gettext "The integrity verification doesn't match. Run this tool again to try with a new download." )"
                 el_error "md5 verification failed"
                 exit 1
             fi
@@ -592,7 +592,7 @@ main(){
         fi
 
         if ! ((is_checksum_ok)) ; then
-            guitool error "$( eval_gettext "The integrity verification doesn't looks correct." )"
+            guitool error "$( eval_gettext "The integrity verification doesn't look correct." )"
             el_error "integrity has not been verified"
             exit 1
         fi
@@ -605,7 +605,7 @@ main(){
 
     # not inserted ? do it!
     if [[ "${#menu[@]}" -lt 3 ]] ; then
-        guitool info "$( eval_gettext "Please insert your USB media to record before to continue." )"
+        guitool info "$( eval_gettext "Please insert your USB media to record before continuing." )"
 
         generate_menu_selector
         if [[ "${#menu[@]}" -lt 3 ]] ; then
@@ -763,7 +763,7 @@ main(){
         #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M ; then
 
         # confirm write
-        if ((is_hd_included)) && ! guitool question "$( eval_gettext "You selected to write into a hard disk instead of a USB memory, this is dangerous if you selected the wrong one. Do you want to continue? This disk is going to be entirely erased! :" ) ${image_device}" ; then
+        if ((is_hd_included)) && ! guitool question "$( eval_gettext "You selected to write into a hard disk instead of a USB drive, this is dangerous if you selected the wrong one. Do you want to continue? This disk is going to be entirely erased! :" ) ${image_device}" ; then
             exit 1
         fi
 
@@ -777,7 +777,7 @@ main(){
         else
             # full write zeroes
             if ((is_full_rewrite)) ; then
-                guitool working_start "$( eval_gettext "Please be patient, to write the entire USB with zeros is a very slow task. This operation will repair or improve your USB media making it working more reliable." )"
+                guitool working_start "$( eval_gettext "Please be patient, writing an entire USB with zeros is a very slow task. This operation will repair or improve your USB media making it work more reliable." )"
                 dd if=/dev/zero of="$image_device" bs=4M  2>/dev/null
                 guitool working_stop
             fi
@@ -807,13 +807,13 @@ main(){
         # show possible errors found
         if ((is_record_failed)) ; then
             el_error "dd was unable to write. Image size '${image_filename_size}', Image file '${image_filename}', Device '${image_device}', Device size '${image_device_size}' \n$(dmesg | grep -i error | tail -4)\Partitions:\n$( partitions-list --show-all --show-disks --show-raw )"
-            guitool error "$( eval_gettext "Error recording the USB" ). $( eval_gettext "Failed to write all the contents, maybe your USB is too small for the size of this ISO? This error can be also caused by a bad quality USB. We recommend to use only good quality devices, for example the model Sandisk Ultra Flair 32GB, which is cheap and enough fast to make the Persistence feature working light and responsive. By other side, you can try running this tool from a terminal with the option to perform a forced full clean of your device, as:" )  $(basename "$0" ) --clean"
+            guitool error "$( eval_gettext "Error recording the USB" ). $( eval_gettext "Failed to write all the contents, maybe your USB is too small for the size of this ISO? This error can be also caused by a bad quality USB. We recommend to use only good quality devices, for example the SanDisk Ultra Flair 32GB, which is cheap and fast enough to make the Persistence feature working light and responsive. By other side, you can try running this tool from a terminal with the option to perform a forced full clean of your device, as:" )  $(basename "$0" ) --clean"
             exit 1
         fi
     fi
 
     local message_congratulations
-    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used on any computer! Remember that some newer computers requires to disable the UEFI and Secure Boot modes, you can find all the detailed information about this on the Elive website." )" "" )"
+    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used on any computer! Remember that some newer computers require you to disable the UEFI and Secure Boot modes, you can find all the detailed information about this on the Elive website." )" "" )"
 
     if ((is_auto_mode)) ; then
         el_info "$message_congratulations"
