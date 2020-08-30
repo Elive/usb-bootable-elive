@@ -36,7 +36,7 @@ exit_error(){
     else
         guitool error "$( eval_gettext "Aborted USB recording." )"
     fi
-    guitool info "$( eval_gettext "If there's an issue with the tool we suggest to report it to Elive. You can also try to delete the directory:" ) $cache_dir"
+    guitool info "$( eval_gettext "If there's an issue with the tool we suggest to report it to Elive. You can also try deleting the directory:" ) $cache_dir"
 
     rm -f "$TMP_ERROR_LOGS_f" "$TMP_PROGRESS_WORKING_f"
 }
@@ -327,7 +327,7 @@ main(){
 
     # do not run it in the live system
     if grep -qs "boot=live" /proc/cmdline ; then
-        guitool error "$( eval_gettext "This tool is made to work under the OS installed on hard disk. Install first Elive in order to use it." )"
+        guitool error "$( eval_gettext "This tool is made to work under an installed version of Elive. Install Elive first in order to use it." )"
         exit
     fi
 
@@ -345,7 +345,7 @@ main(){
 
     # select version {{{
     if ! ((is_image_given)) ; then
-        if guitool question "$( eval_gettext "Do you have an already downloaded Elive version? Otherwise we will try to download the last available one." )" ; then
+        if guitool question "$( eval_gettext "Do you already have a copy of Elive? (If you don't, we'll try to download one.)" )" ; then
             image_filename="$( $guitool --file-selection --filename="$( xdg-user-dir DOWNLOAD )/" --file-filter="*.img *.IMG *.iso *.ISO" || echo cancel )"
 
             if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] && ! [[ -z "$image_filename" ]] ; then
@@ -364,7 +364,7 @@ main(){
 
         if ! ((is_image_given)) ; then
             # ask for img / iso
-            if guitool question "$( eval_gettext "Do you want to use the IMG version? The IMG version can have persistence with encryption, but the ISO version can be compatible with more hardware." )" ; then
+            if guitool question "$( eval_gettext "Do you want to use the IMG version? The IMG version can have persistence with encryption, but the ISO version is more compatible with some devices." )" ; then
                 image_extension="img"
             else
                 image_extension="iso"
@@ -400,7 +400,7 @@ main(){
 
             if [[ -n "$image_stable_url" ]] && [[ -n "$image_beta_url" ]] ; then
                 # ask version to use
-                if guitool question "$( eval_gettext "Do you want to use the latest Beta version instead of the Stable one?" )" ; then
+                if guitool question "$( eval_gettext "Do you want to use the latest Beta version instead of the Stable one? It has more features but is more unpolished." )" ; then
                     image_url="$image_beta_url"
                     image_version="$image_beta_version"
                     image_filename="$image_beta_filename"
@@ -499,7 +499,7 @@ main(){
                 message_downloading="$( printf "$( eval_gettext "Synchronizing to Elive (%s), please be patient..." )" "$image_version" )"
 
                 local message_comparing
-                message_comparing="$( printf "$( eval_gettext "Searching particles in the universe to recycle, to save you around the 90 percent of the needed download!" )" "" )"
+                message_comparing="$( printf "$( eval_gettext "Searching particles in the universe to recycle, to save you around 90 percent of the needed download!" )" "" )"
 
 
                 while kill -0 "$pid" 2>/dev/null
@@ -616,7 +616,7 @@ main(){
 
     if [[ "${#menu[@]}" -lt 3 ]] ; then
         #guitool error "$( eval_gettext "No USB thumb drives were found." )"
-        if guitool question "$( eval_gettext "No USB thumb drives found. Do you want to show all the available hard disks? (use this option with caution, you can destroy all your computer's data if you select the wrong disk)" )" ; then
+        if guitool question "$( eval_gettext "No USB thumb drives found. Do you want to show all the available hard disks? (Use this option with caution, you can destroy all your computer's data if you select the wrong disk!)" )" ; then
 
             generate_menu_selector "include_hd"
             if [[ "${#menu[@]}" -lt 3 ]] ; then
@@ -689,7 +689,7 @@ main(){
         if [[ -n "$image_device_size" ]] && [[ -n "$image_filename_size" ]] && [[ "${image_device_size}" -lt "${image_filename_size}000" ]] ; then
             el_warning "temporal report: USB is smaller than image to record: image is '${image_filename_size}' and device is '${image_device_size}'"
 
-            if ! guitool question "$( eval_gettext "The size detected of your USB media appears to be smaller than the size of the image you want to record on it. Do you want to continue?" )" ; then
+            if ! guitool question "$( eval_gettext "The size detected of your USB media appears to be smaller than the size of the image you want to record on it. Do you want to continue anyway?" )" ; then
                 exit
             fi
         fi
@@ -715,7 +715,7 @@ main(){
                     exit 1
                 fi
             else
-                if ! guitool question "$( eval_gettext "You have a persistence partition included on this USB, if you continue you will lose all the data inside it, like your users and files, do you want to continue?" )" ; then
+                if ! guitool question "$( eval_gettext "You have a persistence partition included on this USB, if you continue you will lose all the data inside it, like your users and files. Continue anyway?" )" ; then
                     exit
                 fi
             fi
@@ -777,7 +777,7 @@ main(){
         else
             # full write zeroes
             if ((is_full_rewrite)) ; then
-                guitool working_start "$( eval_gettext "Please be patient, writing an entire USB with zeros is a very slow task. This operation will repair or improve your USB media making it work more reliable." )"
+                guitool working_start "$( eval_gettext "Please be patient, writing an entire USB with zeros is a very slow task. This operation will repair or improve your USB media making it work more reliably." )"
                 dd if=/dev/zero of="$image_device" bs=4M  2>/dev/null
                 guitool working_stop
             fi
@@ -807,7 +807,7 @@ main(){
         # show possible errors found
         if ((is_record_failed)) ; then
             el_error "dd was unable to write. Image size '${image_filename_size}', Image file '${image_filename}', Device '${image_device}', Device size '${image_device_size}' \n$(dmesg | grep -i error | tail -4)\Partitions:\n$( partitions-list --show-all --show-disks --show-raw )"
-            guitool error "$( eval_gettext "Error recording the USB" ). $( eval_gettext "Failed to write all the contents, maybe your USB is too small for the size of this ISO? This error can be also caused by a bad quality USB. We recommend to use only good quality devices, for example the SanDisk Ultra Flair 32GB, which is cheap and fast enough to make the Persistence feature working light and responsive. By other side, you can try running this tool from a terminal with the option to perform a forced full clean of your device, as:" )  $(basename "$0" ) --clean"
+            guitool error "$( eval_gettext "Error recording the USB" ). $( eval_gettext "Failed to write all the contents, is your USB is too small for this ISO? This error can be also caused by a bad quality USB. We recommend to only use good quality devices, for example the SanDisk Ultra Flair 32GB, which is cheap and fast enough to make the Persistence feature work very quickly. You could also try running this tool from a terminal with the option to perform a forced full clean of your device, as:" )  $(basename "$0" ) --clean"
             exit 1
         fi
     fi
