@@ -333,8 +333,7 @@ main(){
 
 
     if ! ((is_auto_mode)) ; then
-        #if ! guitool question "$( eval_gettext "This tool will create an USB bootable media that you can use for boot Elive in any computer, all the data inside the USB is going to be deleted. Do you want to continue?" )" ; then
-        if ! guitool question "$( eval_gettext "This tool will record your USB with an ISO image file, downloading itself the latest version of Elive, or you can also use it to record any operating system with it. After that you will be able to boot a computer from this USB." )" ; then
+        if ! guitool question "$( eval_gettext "This tool will record your USB with an ISO image file, like an Elive download, or any other operating system. After that, you will be able to boot a computer from this USB with your desired OS inside. Remember that Elive has also some unique features to save your data among Live sessions in a very secure way." )" ; then
             exit
         fi
     fi
@@ -345,7 +344,7 @@ main(){
 
     # select version {{{
     if ! ((is_image_given)) ; then
-        if guitool question "$( eval_gettext "Do you already have a copy of Elive? (If you don't, we'll try to download one.)" )" ; then
+        #if guitool question "$( eval_gettext "Do you already have a copy of Elive? (If you don't, we'll try to download one.)" )" ; then
             image_filename="$( $guitool --file-selection --filename="$( xdg-user-dir DOWNLOAD )/" --file-filter="*.img *.IMG *.iso *.ISO" || echo cancel )"
 
             if [[ -s "$image_filename" ]] && ! [[ "$image_filename" = "cancel" ]] && ! [[ -z "$image_filename" ]] ; then
@@ -360,7 +359,7 @@ main(){
                 unset image_filename
                 unset is_image_given
             fi
-        fi
+        #fi
 
         if ! ((is_image_given)) ; then
             # ask for img / iso
@@ -757,10 +756,10 @@ main(){
         # add a 10% to the real size to never show 100 until we really finished
         image_filename_size="$( echo "(${image_filename_size} / 100) * 110" | bc -l | sed -e 's|\..*$||g' )"
 
-        el_debug "Running command: $command_cat \"$image_filename\" | pv -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=4M "
+        el_debug "Running command: $command_cat \"$image_filename\" | pv -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=4M oflag=sync"
 
         # for debug only (with no real writing):
-        #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M ; then
+        #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M oflag=sync ; then
 
         # confirm write
         if ((is_hd_included)) && ! guitool question "$( eval_gettext "You selected to write into a hard disk instead of a USB drive, this is dangerous if you selected the wrong one. Do you want to continue? This disk is going to be entirely erased! :" ) ${image_device}" ; then
@@ -778,7 +777,8 @@ main(){
             # full write zeroes
             if ((is_full_rewrite)) ; then
                 guitool working_start "$( eval_gettext "Please be patient, writing an entire USB with zeros is a very slow task. This operation will repair or improve your USB media making it work more reliably." )"
-                dd if=/dev/zero of="$image_device" bs=4M  2>/dev/null
+                dd if=/dev/zero of="$image_device" bs=4M  2>"$TMP_ERROR_LOGS_f"
+                sync
                 guitool working_stop
             fi
 
@@ -791,7 +791,7 @@ main(){
 
 
             # record the system
-            if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M 1>/dev/null 2>&1 ; then
+            if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M oflag=sync 1>/dev/null 2>"$TMP_ERROR_LOGS_f" ; then
                 el_debug="Last percent wrote speculated as:\n$( tail -n 4 "${TMP_PROGRESS_WORKING_f}" )"
                 sync
                 sleep 1
@@ -806,14 +806,14 @@ main(){
 
         # show possible errors found
         if ((is_record_failed)) ; then
-            el_error "dd was unable to write. Image size '${image_filename_size}', Image file '${image_filename}', Device '${image_device}', Device size '${image_device_size}' \n$(dmesg | grep -i error | tail -4)\Partitions:\n$( partitions-list --show-all --show-disks --show-raw )"
+            el_error "dd was unable to write. Image size '${image_filename_size}', Image file '${image_filename}', Device '${image_device}', Device size '${image_device_size}' \nlogs: $(cat "$TMP_ERROR_LOGS_f" )\n$(dmesg | grep -i error | tail -4)\Partitions:\n$( partitions-list --show-all --show-disks --show-raw )"
             guitool error "$( eval_gettext "Error recording the USB" ). $( eval_gettext "Failed to write all the contents, is your USB is too small for this ISO? This error can be also caused by a bad quality USB. We recommend to only use good quality devices, for example the SanDisk Ultra Flair 32GB, which is cheap and fast enough to make the Persistence feature work very quickly. You could also try running this tool from a terminal with the option to perform a forced full clean of your device, as:" )  $(basename "$0" ) --clean"
             exit 1
         fi
     fi
 
     local message_congratulations
-    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used on any computer! Remember that some newer computers require you to disable the UEFI and Secure Boot modes, you can find all the detailed information about this on the Elive website." )" "" )"
+    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used on any computer! Remember that you need to press the special key to select from which device you want to boot the computer, and then select the USB. You may also need to change some BIOS settings too. You can find all the detailed information about this on the Elive website." )" "" )"
 
     if ((is_auto_mode)) ; then
         el_info "$message_congratulations"
