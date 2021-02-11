@@ -679,9 +679,9 @@ main(){
     # record Elive to device {{{
     if [[ -s "$image_filename" ]] && [[ -b "$image_device" ]] ; then
         local message_recording
-        message_recording="$( printf "$( eval_gettext "Recording Elive %s into your %s device" )" "$image_version" "$image_device" )"
+        message_recording="$( printf "$( eval_gettext "Recording Elive %s onto your %s device" )" "$image_version" "$image_device" )"
         if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
-            message_recording="$( printf "$( eval_gettext "Recording %s into your %s device" )" "${image_version}" "$image_device" )"
+            message_recording="$( printf "$( eval_gettext "Recording %s onto your %s device" )" "${image_version}" "$image_device" )"
         fi
 
         # check if size is enough
