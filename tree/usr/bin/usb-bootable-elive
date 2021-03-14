@@ -353,7 +353,7 @@ main(){
                 image_filename_size="$( du -Ls "$image_filename" | awk '{print $1}' )"
                 if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
                     image_version="$( basename "$image_filename" )"
-                    guitool info "$( eval_gettext "This doesn't look like a normal Elive version, but we will record it anyway." )"
+                    guitool info "$( eval_gettext "This doesn't look to us like a normal Elive version, but we will record it anyway." )"
                 fi
             else
                 unset image_filename
@@ -399,7 +399,7 @@ main(){
 
             if [[ -n "$image_stable_url" ]] && [[ -n "$image_beta_url" ]] ; then
                 # ask version to use
-                if guitool question "$( eval_gettext "Do you want to use the latest Beta version instead of the Stable one? It has more features but is more unpolished." )" ; then
+                if guitool question "$( eval_gettext "Do you want to use the latest Beta version instead of the Stable one? It has more features and/or newer software but is less polished." )" ; then
                     image_url="$image_beta_url"
                     image_version="$image_beta_version"
                     image_filename="$image_beta_filename"
@@ -688,7 +688,7 @@ main(){
         if [[ -n "$image_device_size" ]] && [[ -n "$image_filename_size" ]] && [[ "${image_device_size}" -lt "${image_filename_size}000" ]] ; then
             #el_warning "temporal report: USB is smaller than image to record: image is '${image_filename_size}' and device is '${image_device_size}'. "
 
-            if ! guitool question "$( eval_gettext "The size detected of your USB media appears to be smaller than the size of the image you want to record on it. Do you want to continue anyway?" )" ; then
+            if ! guitool question "$( eval_gettext "The size detected of your USB media appears to be smaller than the size of the image you want to record on it. This may result in an interrupt write. Do you want to continue anyway?" )" ; then
                 exit
             fi
         fi
@@ -714,7 +714,7 @@ main(){
                     exit 1
                 fi
             else
-                if ! guitool question "$( eval_gettext "You have a persistence partition included on this USB, if you continue you will lose all the data inside it, like your users and files. Continue anyway?" )" ; then
+                if ! guitool question "$( eval_gettext "You seem to have a persistence partition included on this USB, if you continue you will lose all the data inside it, like your users and files. Continue anyway?" )" ; then
                     exit
                 fi
             fi
@@ -813,7 +813,7 @@ main(){
     fi
 
     local message_congratulations
-    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used on any computer! Remember that you need to press the special key to select from which device you want to boot the computer, and then select the USB. You may also need to change some BIOS settings too. You can find all the detailed information about this on the Elive website." )" "" )"
+    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used on any computer! Remember that you need to press the computer's special key to select from which device you want to boot the computer, and then select the USB. You may need to change some BIOS settings too. You can find all the detailed information about this on the Elive website." )" "" )"
 
     if ((is_auto_mode)) ; then
         el_info "$message_congratulations"
