@@ -688,7 +688,7 @@ main(){
         if [[ -n "$image_device_size" ]] && [[ -n "$image_filename_size" ]] && [[ "${image_device_size}" -lt "${image_filename_size}000" ]] ; then
             #el_warning "temporal report: USB is smaller than image to record: image is '${image_filename_size}' and device is '${image_device_size}'. "
 
-            if ! guitool question "$( eval_gettext "The size detected of your USB media appears to be smaller than the size of the image you want to record on it. This may result in an interrupt write. Do you want to continue anyway?" )" ; then
+            if ! guitool question "$( eval_gettext "The size detected of your USB media appears to be smaller than the size of the image you want to record on it. This may result in a corrupted system. Do you want to continue anyway?" )" ; then
                 exit
             fi
         fi
