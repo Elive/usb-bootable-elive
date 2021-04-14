@@ -434,7 +434,7 @@ main(){
             # checks
             if [[ -z "$image_url" ]] ; then
                 #guitool error "$( eval_gettext "No versions of Elive for USB available found from the website." )"
-                guitool info "$( eval_gettext "Download manually first the version of Elive that you want to use. Then give it to this tool in order to record your media with it." )"
+                guitool info "$( eval_gettext "First, download manually the version of Elive that you want to use. Then insert the downloaded file into this tool in order to record your media with it." )"
                 #el_error "no versions found on the website"
                 exit 0
             fi
@@ -714,7 +714,7 @@ main(){
                     exit 1
                 fi
             else
-                if ! guitool question "$( eval_gettext "You seem to have a persistence partition included on this USB, if you continue you will lose all the data inside it, like your users and files. Continue anyway?" )" ; then
+                if ! guitool question "$( eval_gettext "You seem to have a Persistence partition included on this USB, if you continue you will lose all the data inside it, like your users and files. Continue anyways?" )" ; then
                     exit
                 fi
             fi
