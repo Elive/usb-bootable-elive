@@ -333,7 +333,7 @@ main(){
 
 
     if ! ((is_auto_mode)) ; then
-        if ! guitool question "$( eval_gettext "This tool will record your USB with an ISO image file, like an Elive download, or any other operating system. After that, you will be able to boot a computer from this USB with your desired OS inside. Remember that Elive has also some unique features to save your data among Live sessions in a very secure way." )" ; then
+        if ! guitool question "$( eval_gettext "This tool will overwrite your USB with an ISO image file, like an Elive download, or any other operating system. After that, you will be able to boot a computer from this USB with your desired OS. Remember that Elive also has unique features to save your data using Live sessions in a very secure way." )" ; then
             exit
         fi
     fi
@@ -363,7 +363,7 @@ main(){
 
         if ! ((is_image_given)) ; then
             # ask for img / iso
-            if guitool question "$( eval_gettext "Do you want to use the IMG version? The IMG version can have persistence with encryption, but the ISO version is more compatible with some devices." )" ; then
+            if guitool question "$( eval_gettext "Do you want to use the IMG version? The IMG version can have persistence with encryption, but the ISO version is more compatible with most devices." )" ; then
                 image_extension="img"
             else
                 image_extension="iso"
@@ -434,7 +434,7 @@ main(){
             # checks
             if [[ -z "$image_url" ]] ; then
                 #guitool error "$( eval_gettext "No versions of Elive for USB available found from the website." )"
-                guitool info "$( eval_gettext "First, download manually the version of Elive that you want to use. Then insert the downloaded file into this tool in order to record your media with it." )"
+                guitool info "$( eval_gettext "First, download the version of Elive that you want to use. Then insert the downloaded file into this tool in order to write it to your media carrier." )"
                 #el_error "no versions found on the website"
                 exit 0
             fi
@@ -688,7 +688,7 @@ main(){
         if [[ -n "$image_device_size" ]] && [[ -n "$image_filename_size" ]] && [[ "${image_device_size}" -lt "${image_filename_size}000" ]] ; then
             #el_warning "temporal report: USB is smaller than image to record: image is '${image_filename_size}' and device is '${image_device_size}'. "
 
-            if ! guitool question "$( eval_gettext "The size detected of your USB media appears to be smaller than the size of the image you want to record on it. This may result in a corrupted system. Do you want to continue anyway?" )" ; then
+            if ! guitool question "$( eval_gettext "The detected size of your USB media appears to be smaller than the size of the image you want to record to it. This may result in a corrupted system. Do you want to continue anyway?" )" ; then
                 exit
             fi
         fi
@@ -714,7 +714,7 @@ main(){
                     exit 1
                 fi
             else
-                if ! guitool question "$( eval_gettext "You seem to have a Persistence partition included on this USB, if you continue you will lose all the data inside it, like your users and files. Continue anyways?" )" ; then
+                if ! guitool question "$( eval_gettext "You seem to have a Persistence partition included on this USB, if you continue you will lose all the data inside, like your users and files. Continue anyway?" )" ; then
                     exit
                 fi
             fi
@@ -807,7 +807,7 @@ main(){
         # show possible errors found
         if ((is_record_failed)) ; then
             el_error "dd was unable to write. Image size '${image_filename_size}', Image file '${image_filename}', Device '${image_device}', Device size '${image_device_size}' \nlogs: $(cat "$TMP_ERROR_LOGS_f" )\n$(dmesg | grep -i error | tail -4)\Partitions:\n$( partitions-list --show-all --show-disks --show-raw )"
-            guitool error "$( eval_gettext "Error recording the USB" ). $( eval_gettext "Failed to write all the contents, is your USB is too small for this ISO? This error can be also caused by a bad quality USB. We recommend to only use good quality devices, for example the SanDisk Ultra Flair 32GB, which is cheap and fast enough to make the Persistence feature work very quickly. You could also try running this tool from a terminal with the option to perform a forced full clean of your device, as:" )  $(basename "$0" ) --clean"
+            guitool error "$( eval_gettext "Error recording the USB" ). $( eval_gettext "Failed to copy all the content, is your USB is too small for the ISO? This error can be also caused by a bad quality USB. We recommend to only use good quality devices, for example the SanDisk Ultra Flair 32GB, which is cheap and fast enough to have the Persistence feature work well. You could also try running this tool from a terminal with the option to perform a forced full cleansing of your device, as:" )  $(basename "$0" ) --clean"
             exit 1
         fi
     fi
