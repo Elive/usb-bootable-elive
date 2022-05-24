@@ -38,9 +38,9 @@ exit_error(){
     rm -f "$lockfile"
     kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
     if [[ -s "$TMP_ERROR_LOGS_f" ]] ; then
-        guitool error "$( eval_gettext "Aborted USB recording." )\n\n$(tail -2 "$TMP_ERROR_LOGS_f")"
+        guitool error "$( eval_gettext "Aborted USB writing." )\n\n$(tail -2 "$TMP_ERROR_LOGS_f")"
     else
-        guitool error "$( eval_gettext "Aborted USB recording." )"
+        guitool error "$( eval_gettext "Aborted USB writing." )"
     fi
     guitool info "$( eval_gettext "If there's an issue with the tool we suggest to report it to Elive. You can also try deleting the directory:" ) $cache_dir"
 
@@ -359,7 +359,7 @@ main(){
                 image_filename_size="$( du -Ls "$image_filename" | awk '{print $1}' )"
                 if ! echo "$image_version" | grep -qs "^[[:digit:]].*[[:digit:]]$" ; then
                     image_version="$( basename "$image_filename" )"
-                    guitool info "$( eval_gettext "This doesn't look to us like a normal Elive version, but we will record it anyway." )"
+                    guitool info "$( eval_gettext "This doesn't appear to be a normal Elive version, but we will write it anyway." )"
                 fi
             else
                 unset image_filename
@@ -504,7 +504,7 @@ main(){
                 message_downloading="$( printf "$( eval_gettext "Synchronizing to Elive (%s), please be patient..." )" "$image_version" )"
 
                 local message_comparing
-                message_comparing="$( printf "$( eval_gettext "Searching particles in the universe to recycle, to save you around 90 percent of the needed download!" )" "" )"
+                message_comparing="$( printf "$( eval_gettext "Searching for particles in the universe to recycle, to save you around 90 percent of the needed download!" )" "" )"
 
 
                 while kill -0 "$pid" 2>/dev/null
@@ -768,7 +768,7 @@ main(){
         #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M oflag=sync ; then
 
         # confirm write
-        if ((is_hd_included)) && ! guitool question "$( eval_gettext "You selected to write into a hard disk instead of a USB drive, this is dangerous if you selected the wrong one. Do you want to continue? This disk is going to be entirely erased! :" ) ${image_device}" ; then
+        if ((is_hd_included)) && ! guitool question "$( eval_gettext "You selected to write to a hard disk instead of a USB drive. You may lose data if you selected the wrong one. Do you want to continue? This disk is going to be erased entirely! :" ) ${image_device}" ; then
             exit 1
         fi
 
@@ -813,13 +813,13 @@ main(){
         # show possible errors found
         if ((is_record_failed)) ; then
             el_error "dd was unable to write. Image size '${image_filename_size}', Image file '${image_filename}', Device '${image_device}', Device size '${image_device_size}' \nlogs: $(cat "$TMP_ERROR_LOGS_f" )\n$(dmesg | grep -i error | tail -4)\Partitions:\n$( partitions-list --show-all --show-disks --show-raw )"
-            guitool error "$( eval_gettext "Error recording the USB" ). $( eval_gettext "Failed to copy all the content, is your USB is too small for the ISO? This error can be also caused by a bad quality USB. We recommend to only use good quality devices, for example the SanDisk Ultra Flair 32GB, which is cheap and fast enough to have the Persistence feature work well. You could also try running this tool from a terminal with the option to perform a forced full cleansing of your device, as:" )  $(basename "$0" ) --clean"
+            guitool error "$( eval_gettext "Error writing to the USB" ). $( eval_gettext "Failed to copy all the content, is your USB is too small for the ISO? This error can be also caused by a bad quality USB. We recommend to only use good quality devices, for example the SanDisk Ultra Flair 32GB, which is cheap and fast enough to have the Persistence feature work well. You could also try running this tool from a terminal with the option to perform a forced full cleansing of your device, as:" )  $(basename "$0" ) --clean"
             exit 1
         fi
     fi
 
     local message_congratulations
-    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB is ready to be used on any computer! Remember that you need to press the computer's special key to select from which device you want to boot the computer, and then select the USB. You may need to change some BIOS settings too. You can find all the detailed information about this on the Elive website." )" "" )"
+    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB disk is ready to be used on any computer! Remember that you need to press a special key on the computer to select the boot device and then select the USB disk. You may need to change some BIOS settings too. You can find detailed information about this on Elive's website." )" "" )"
 
     if ((is_auto_mode)) ; then
         el_info "$message_congratulations"
