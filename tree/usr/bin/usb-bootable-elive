@@ -15,6 +15,12 @@ TMP_ERROR_LOGS_f="${cache_dir}/logs-error.txt"
 wgetopts="--tries=40 --progress=dot:binary -c"
 #set -E
 
+# include sbin in our PATH since its needed sometimes, and there's nothing wrong by using it!
+if [[ "$PATH" != *"/usr/sbin"* ]] ; then
+    # needed for: udevadm
+    export PATH="${PATH}:/usr/local/sbin:/usr/sbin:/sbin"
+fi
+
 # TODO: add an option for improve the health of the USB (filling it with zeroes, which sometimes are needed, more than we think!, which also guarantees the correct writting)
 # TODO: recyclate persistence and other partitions
 
@@ -81,14 +87,14 @@ generate_menu_selector(){
             continue
         fi
 
-        if /sbin/udevadm info --query=property --name="$part" | grep -qsE "$regex_matches" ; then
+        if udevadm info --query=property --name="$part" | grep -qsE "$regex_matches" ; then
             # create an array for use in the menu, with one per line
             menu+=("$( echo "$entry" | awk -v FS="::" '{print $1}' )")
             menu+=("$( echo "$entry" | awk -v FS="::" '{print $7}' )")
-            id_vendor="$( /sbin/udevadm info --query=property --name="$part" | grep "ID_VENDOR_ID=" | sed -e 's|^.*VENDOR_ID=||g' )"
+            id_vendor="$( udevadm info --query=property --name="$part" | grep "ID_VENDOR_ID=" | sed -e 's|^.*VENDOR_ID=||g' )"
             id_vendor="$( lsusb | grep "ID ${id_vendor}:" | sed -e "s|^.*${id_vendor}:||g" | awk '{print $2" "$3}' )"
             if [[ -z "$id_vendor" ]] ; then
-                id_vendor="$( /sbin/udevadm info --query=property --name="$part" | grep "ID_MODEL=" | sed -e 's|^.*ID_MODEL=||g' | awk '{print $1" "$2}' )"
+                id_vendor="$( udevadm info --query=property --name="$part" | grep "ID_MODEL=" | sed -e 's|^.*ID_MODEL=||g' | awk '{print $1" "$2}' )"
             fi
 
             if echo "$entry" | awk -v FS="::" '{print $5}' | grep -qsE "(no name|swap|unformatted)" ; then
