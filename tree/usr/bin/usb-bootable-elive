@@ -768,7 +768,7 @@ main(){
         #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M oflag=sync ; then
 
         # confirm write
-        if ((is_hd_included)) && ! guitool question "$( eval_gettext "You selected to write to a hard disk instead of a USB drive. YOU MAY LOSE DATA if you selected the wrong one. Do you want to continue? This disk is going to be erased entirely! :" ) ${image_device}" ; then
+        if ((is_hd_included)) && ! guitool question "$( eval_gettext "You selected to write to a hard disk instead of a USB thumb drive. YOU MAY LOSE DATA if you selected the wrong one. Do you want to continue? This disk is going to be erased entirely! :" ) ${image_device}" ; then
             exit 1
         fi
 
@@ -819,7 +819,7 @@ main(){
     fi
 
     local message_congratulations
-    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB disk is ready to be used on any computer! Remember to boot by pressing the special key on the computer to select the boot device and then select the USB disk. You may need to change some BIOS settings too. You can find detailed information about this on Elive's website or our forums." )" "" )"
+    message_congratulations="$( printf "$( eval_gettext "Congratulations, your USB thumb drive is ready to be used on any computer! Remember to boot by pressing the special key on the computer to select the boot device and then select the USB thumb drive. You may need to change some BIOS settings too. You can find detailed information about this on Elive's website or our forums." )" "" )"
 
     if ((is_auto_mode)) ; then
         el_info "$message_congratulations"
