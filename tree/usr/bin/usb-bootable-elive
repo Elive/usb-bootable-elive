@@ -762,10 +762,12 @@ main(){
         # add a 10% to the real size to never show 100 until we really finished
         image_filename_size="$( echo "(${image_filename_size} / 100) * 110" | bc -l | sed -e 's|\..*$||g' )"
 
-        el_debug "Running command: $command_cat \"$image_filename\" | pv -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=4M oflag=sync"
+        #el_debug "Running command: $command_cat \"$image_filename\" | pv -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=4M oflag=sync"
+        el_debug "Running command: $command_cat \"$image_filename\" | pv -i 2 -L 600M -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=8M"
 
         # for debug only (with no real writing):
         #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M oflag=sync ; then
+        #if zcat "$image_filename" | pv -i 2 -L 600M -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=8M ; then
 
         # confirm write
         if ((is_hd_included)) && ! guitool question "$( eval_gettext "You selected to write to a hard disk instead of a USB thumb drive. YOU MAY LOSE DATA if you selected the wrong one. Do you want to continue? This disk is going to be erased entirely! :" ) ${image_device}" ; then
@@ -783,7 +785,7 @@ main(){
             # full write zeroes
             if ((is_full_rewrite)) ; then
                 guitool working_start "$( eval_gettext "Please be patient, writing an entire USB with zeros is a very slow task. This operation will repair or improve your USB media making it work more reliably." )"
-                dd if=/dev/zero of="$image_device" bs=4M  2>"$TMP_ERROR_LOGS_f"
+                dd if=/dev/zero of="$image_device" bs=8M  2>"$TMP_ERROR_LOGS_f"
                 sync
                 guitool working_stop
             fi
@@ -793,11 +795,12 @@ main(){
 
             # first: erase headers to clean trashy bytes
             echo "1" >> "$TMP_PROGRESS_WORKING_f"
-            dd if=/dev/zero of="$image_device" bs=4M count=32  2>/dev/null
+            dd if=/dev/zero of="$image_device" bs=8M count=32  2>/dev/null
 
 
             # record the system
-            if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M oflag=sync 1>/dev/null 2>"$TMP_ERROR_LOGS_f" ; then
+            #if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M oflag=sync 1>/dev/null 2>"$TMP_ERROR_LOGS_f" ; then
+            if $command_cat "$image_filename" | pv -i 2 -L 600M -n -W -s "${image_filename_size}k" 2> >( sed -e 's|(100|99|98|97|96)|95|g' > "${TMP_PROGRESS_WORKING_f}" ) | dd of="$image_device" bs=8M 1>/dev/null 2>"$TMP_ERROR_LOGS_f" ; then
                 el_debug="Last percent wrote speculated as:\n$( tail -n 4 "${TMP_PROGRESS_WORKING_f}" )"
                 sync
                 sleep 1
