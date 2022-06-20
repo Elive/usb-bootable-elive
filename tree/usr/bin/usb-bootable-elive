@@ -72,9 +72,9 @@ generate_menu_selector(){
     # build menu variable from partitions list {{{
     #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
     if [[ "$1" = "include_hd" ]] ; then
-        regex_matches="^(ID_USB_DRIVER=usb-storage|E: DEVPATH=.*/usb|ID_TYPE=disk)$"
+        regex_matches="^(ID_USB_DRIVER=usb-storage|DEVPATH=.*/usb|ID_TYPE=disk)$"
     else
-        regex_matches="^(ID_USB_DRIVER=usb-storage|E: DEVPATH=.*/usb)$"
+        regex_matches="^(ID_USB_DRIVER=usb-storage|DEVPATH=.*/usb)$"
     fi
 
     unset menu id_vendor
