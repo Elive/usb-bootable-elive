@@ -328,6 +328,11 @@ main(){
         shift
     done
 
+    if [[ "$UID" != 0 ]] && ! groups | grep -wqs disk ; then
+        $guitool --error --text="$( eval_gettext "This tool needs to be run with admin privileges. Try from a terminal:" ) sudo $(basename $0)"
+        exit 1
+    fi
+
     mkdir -p "$cache_dir"
     cd "$cache_dir"
 
