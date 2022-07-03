@@ -83,9 +83,17 @@ generate_menu_selector(){
         part="$( echo "$entry" | awk -v FS="::" '{print $1}' )"
         [[ ! -b "$part" ]] && continue
         # ignore partitions (end in numbers)
-        if [[ "$part" != /dev/mmcblk* ]] && echo "$part" | grep -qs "[[:digit:]]$" ; then
-            continue
-        fi
+        case "$part" in
+            "/dev/mmcblk"*)
+                echo "$part" | grep -qsE "p[[:digit:]]+$" && continue
+                ;;
+            "/dev/nvme"*)
+                echo "$part" | grep -qsE "(e|p)[[:digit:]]+$" && continue
+                ;;
+            *)
+                echo "$part" | grep -qsE "[[:digit:]]+$" && continue
+                ;;
+        esac
 
         if udevadm info --query=property --name="$part" | grep -qsE "$regex_matches" ; then
             # create an array for use in the menu, with one per line
