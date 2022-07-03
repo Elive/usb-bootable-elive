@@ -191,7 +191,7 @@ guitool(){
                 esac
             fi
 
-            { ( while test -f "${TMP_PROGRESS_WORKING_f}" ; do tail -n 1 "$TMP_PROGRESS_WORKING_f" || true ; LC_ALL=C sleep 0.4 ; done | $guitool --progress --text="$message_doing_magic" --auto-close --no-cancel ) & disown ; } 1>/dev/null
+            { ( while test -f "${TMP_PROGRESS_WORKING_f}" ; do tail -n 1 "$TMP_PROGRESS_WORKING_f" | sed -e 's;\(100\|99\|98\|97\|96\);95;g'  || true ; LC_ALL=C sleep 0.5 ; done | $guitool --progress --text="$message_doing_magic" --auto-close --no-cancel ) & disown ; } 1>/dev/null
 
             ;;
         working_start)
@@ -274,6 +274,7 @@ main(){
     # pre {{{
     local url_image_stable url_image_beta menu id_vendor
 
+    opts_dd_sync="oflag=dsync"
 
     el_dependencies_check "dd|lynx|wget|zsync"
 
@@ -689,6 +690,15 @@ main(){
         fi
     fi
 
+    # async mode for faster devices {{{
+    if [[ "$image_device" != "/dev/mmcblk"* ]] ; then
+        # this is external HD's, or like an external NVME/SSD from external USB convertor
+        if udevadm info --query=property --name="$image_device" | grep -qs "ID_TYPE=disk" ; then
+            unset opts_dd_sync
+        fi
+    fi
+    # - async mode for faster devices }}}
+
     # get the size of the device
     if [[ -z "$image_device_size" ]] ; then
         image_device_size="$( partitions-list --show-disks --show-raw --show-only="$image_device" | awk -v FS="::" '{print $6 }' )"
@@ -775,11 +785,11 @@ main(){
         # add a 10% to the real size to never show 100 until we really finished
         image_filename_size="$( echo "(${image_filename_size} / 100) * 110" | bc -l | sed -e 's|\..*$||g' )"
 
-        #el_debug "Running command: $command_cat \"$image_filename\" | pv -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=4M oflag=sync"
-        el_debug "Running command: $command_cat \"$image_filename\" | pv -i 2 -L 600M -n -W -s \"${image_filename_size}k\" 2> >( sed -e 's;\\(100\\|99\\|98\\|97\\|96\\);95;g' > \"${TMP_PROGRESS_WORKING_f}\" ) | dd of=\"$image_device\" bs=8M 1>/dev/null 2>\"$TMP_ERROR_LOGS_f\" "
+        #el_debug "Running command: $command_cat \"$image_filename\" | pv -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=4M oflag=dsync"
+        el_debug "Running command: $command_cat \"$image_filename\" | pv -i 2 -L 600M -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=8M 1>/dev/null 2>\"$TMP_ERROR_LOGS_f\" $opts_dd_sync "
 
         # for debug only (with no real writing):
-        #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M oflag=sync ; then
+        #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M oflag=dsync ; then
         #if zcat "$image_filename" | pv -i 2 -L 600M -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=8M ; then
 
         # confirm write
@@ -792,7 +802,7 @@ main(){
             for i in $(seq 10)
             do
                 echo "${i}0" >> ${TMP_PROGRESS_WORKING_f}
-                LC_ALL=C sleep 0.4
+                LC_ALL=C sleep 0.3
             done
         else
             # full write zeroes
@@ -812,11 +822,11 @@ main(){
 
 
             # record the system
-            #if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M oflag=sync 1>/dev/null 2>"$TMP_ERROR_LOGS_f" ; then
-            if $command_cat "$image_filename" | pv -i 2 -L 600M -n -W -s "${image_filename_size}k" 2> >( sed -e 's;\(100\|99\|98\|97\|96\);95;g' > "${TMP_PROGRESS_WORKING_f}" ) | dd of="$image_device" bs=8M 1>/dev/null 2>"$TMP_ERROR_LOGS_f" ; then
+            #if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M oflag=dsync 1>/dev/null 2>"$TMP_ERROR_LOGS_f" ; then
+            if $command_cat "$image_filename" | pv -i 2 -L 600M -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=8M $opts_dd_sync  1>/dev/null 2>"$TMP_ERROR_LOGS_f" ; then
                 el_debug="Last percent wrote speculated as:\n$( tail -n 4 "${TMP_PROGRESS_WORKING_f}" )"
                 sync
-                sleep 1
+                LC_ALL=C sleep 0.4
                 echo "100" >> "$TMP_PROGRESS_WORKING_f"
             else
                 is_record_failed=1
