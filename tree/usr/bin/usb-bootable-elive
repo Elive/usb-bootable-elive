@@ -72,7 +72,7 @@ generate_menu_selector(){
     # build menu variable from partitions list {{{
     #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
     if [[ "$1" = "include_hd" ]] ; then
-        regex_matches="^(ID_USB_DRIVER=usb-storage|DEVPATH=.*/usb|ID_TYPE=disk)$"
+        regex_matches="^(ID_USB_DRIVER=usb-storage|DEVPATH=.*/usb|ID_TYPE=disk|ID_DRIVE.*FLASH_SD=1)$"
     else
         regex_matches="^(ID_USB_DRIVER=usb-storage|DEVPATH=.*/usb)$"
     fi
@@ -83,7 +83,7 @@ generate_menu_selector(){
         part="$( echo "$entry" | awk -v FS="::" '{print $1}' )"
         [[ ! -b "$part" ]] && continue
         # ignore partitions (end in numbers)
-        if echo "$part" | grep -qs "[[:digit:]]$" ; then
+        if [[ "$part" != /dev/mmcblk* ]] && echo "$part" | grep -qs "[[:digit:]]$" ; then
             continue
         fi
 
