@@ -776,7 +776,7 @@ main(){
         image_filename_size="$( echo "(${image_filename_size} / 100) * 110" | bc -l | sed -e 's|\..*$||g' )"
 
         #el_debug "Running command: $command_cat \"$image_filename\" | pv -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=4M oflag=sync"
-        el_debug "Running command: $command_cat \"$image_filename\" | pv -i 2 -L 600M -n -W -s \"${image_filename_size}k\" 2>\"${TMP_PROGRESS_WORKING_f}\" | dd of=\"$image_device\" bs=8M"
+        el_debug "Running command: $command_cat \"$image_filename\" | pv -i 2 -L 600M -n -W -s \"${image_filename_size}k\" 2> >( sed -e 's;\\(100\\|99\\|98\\|97\\|96\\);95;g' > \"${TMP_PROGRESS_WORKING_f}\" ) | dd of=\"$image_device\" bs=8M 1>/dev/null 2>\"$TMP_ERROR_LOGS_f\" "
 
         # for debug only (with no real writing):
         #if zcat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="/dev/null" bs=4M oflag=sync ; then
@@ -813,7 +813,7 @@ main(){
 
             # record the system
             #if $command_cat "$image_filename" | pv -n -W -s "${image_filename_size}k" 2>"${TMP_PROGRESS_WORKING_f}" | dd of="$image_device" bs=4M oflag=sync 1>/dev/null 2>"$TMP_ERROR_LOGS_f" ; then
-            if $command_cat "$image_filename" | pv -i 2 -L 600M -n -W -s "${image_filename_size}k" 2> >( sed -e 's|(100|99|98|97|96)|95|g' > "${TMP_PROGRESS_WORKING_f}" ) | dd of="$image_device" bs=8M 1>/dev/null 2>"$TMP_ERROR_LOGS_f" ; then
+            if $command_cat "$image_filename" | pv -i 2 -L 600M -n -W -s "${image_filename_size}k" 2> >( sed -e 's;\(100\|99\|98\|97\|96\);95;g' > "${TMP_PROGRESS_WORKING_f}" ) | dd of="$image_device" bs=8M 1>/dev/null 2>"$TMP_ERROR_LOGS_f" ; then
                 el_debug="Last percent wrote speculated as:\n$( tail -n 4 "${TMP_PROGRESS_WORKING_f}" )"
                 sync
                 sleep 1
