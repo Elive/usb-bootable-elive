@@ -69,6 +69,7 @@ echo "$$" > "$lockfile"
 # }}}
 # this function generates the menu with the USB device to select
 generate_menu_selector(){
+    local buf size label is_valid
     # build menu variable from partitions list {{{
     #  device :: type :: filesystem :: label :: human_label :: size :: human_size :: uuid
     if [[ "$1" = "include_hd" ]] ; then
@@ -80,6 +81,8 @@ generate_menu_selector(){
     unset menu id_vendor
     while read -ru 3 entry
     do
+        unset buf size label is_valid
+
         part="$( echo "$entry" | awk -v FS="::" '{print $1}' )"
         [[ ! -b "$part" ]] && continue
         # ignore partitions (end in numbers)
@@ -95,7 +98,23 @@ generate_menu_selector(){
                 ;;
         esac
 
-        if udevadm info --query=property --name="$part" | grep -qsE "$regex_matches" ; then
+        buf="$( EL_DEBUG=0 partitions-list --show-raw --show-disks --show-only="$part" )"
+        size="$( echo "$buf" | awk -v FS="::" '{print $6}' )"
+        label="$( echo "$buf" | awk -v FS="::" '{print $4}' )"
+
+        # check for disks which has already been labeled as Elive USB's
+        if [[ "$label" = Elive_*_at_* ]] ; then
+            is_valid=1
+        fi
+
+        if udevadm info --query=property --name="$part" | grep -qsE "$regex_matches" || ((is_valid)) ; then
+            # skip big disks when not searching for HDs
+            if [[ "$1" != "include_hd" ]] && ! ((is_valid)) ; then
+                if [[ "$size" -gt 350000000000 ]] ; then
+                    el_debug "Disk too big, ignoring because we are searching only for USB sticks: $part"
+                    continue
+                fi
+            fi
             # create an array for use in the menu, with one per line
             menu+=("$( echo "$entry" | awk -v FS="::" '{print $1}' )")
             menu+=("$( echo "$entry" | awk -v FS="::" '{print $7}' )")
@@ -111,7 +130,7 @@ generate_menu_selector(){
                 menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor " - "$5}' )")
             fi
         fi
-    done 3<<< "$( partitions-list --show-all --show-disks --show-raw | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
+    done 3<<< "$( EL_DEBUG=0 partitions-list --show-all --show-disks --show-raw | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
     # }}}
 }
 
@@ -358,7 +377,7 @@ main(){
         fi
     fi
 
-    el_check_translations_required "report"
+    #el_check_translations_required "report"
 
     # }}}
 
@@ -652,7 +671,7 @@ main(){
     if ((is_auto_mode)) ; then
         if [[ "${#menu[@]}" -eq 3 ]] ; then
             if [[ -b "${menu[0]}" ]] ; then
-                image_device_size="$( partitions-list --show-disks --show-raw --show-only="${menu[0]}" | awk -v FS="::" '{print $6 }' )"
+                image_device_size="$( EL_DEBUG=0 partitions-list --show-disks --show-raw --show-only="${menu[0]}" | awk -v FS="::" '{print $6 }' )"
 
                 if [[ "$image_device_size" -gt 3500000000 ]] && [[ "$image_device_size" -lt 75000000000 ]] ; then
                     image_device="${menu[0]}"
@@ -701,7 +720,7 @@ main(){
 
     # get the size of the device
     if [[ -z "$image_device_size" ]] ; then
-        image_device_size="$( partitions-list --show-disks --show-raw --show-only="$image_device" | awk -v FS="::" '{print $6 }' )"
+        image_device_size="$( EL_DEBUG=0 partitions-list --show-disks --show-raw --show-only="$image_device" | awk -v FS="::" '{print $6 }' )"
     fi
     # - select device to record Elive }}}
 
@@ -726,11 +745,11 @@ main(){
         # TODO:
         # ask
         # cryptsetup support, detect too
-        buf="$( partitions-list --show-all --show-disks --show-raw | awk -v FS="::" '{if ($3 != "swap") print $0}' | grep "^${image_device}" )"
+        buf="$( EL_DEBUG=0 partitions-list --show-all --show-disks --show-raw | awk -v FS="::" '{if ($3 != "swap") print $0}' | grep "^${image_device}" )"
         if echo "$buf" | grep -qsE "(persistence|crypto_LUKS)" ; then
             if echo "$buf" | grep -qsi "Live_BOOT" ; then
                 if echo "$buf" | grep -qsi "Live_OS" ; then
-                    persistence_partition="$( partitions-list --show-all 2>/dev/null | grep -E "^${image_device}.*::(persistence|crypto_LUKS)::" | awk -v FS="::" '{print $1}' | tail -1 )"
+                    persistence_partition="$( EL_DEBUG=0 partitions-list --show-all 2>/dev/null | grep -E "^${image_device}.*::(persistence|crypto_LUKS)::" | awk -v FS="::" '{print $1}' | tail -1 )"
                     is_persistence_included=1
                 fi
             fi
@@ -838,7 +857,7 @@ main(){
 
         # show possible errors found
         if ((is_record_failed)) ; then
-            el_error "dd was unable to write. Image size '${image_filename_size}', Image file '${image_filename}', Device '${image_device}', Device size '${image_device_size}' \nlogs: $(cat "$TMP_ERROR_LOGS_f" )\n$(dmesg | grep -i error | tail -4)\Partitions:\n$( partitions-list --show-all --show-disks --show-raw )"
+            el_error "dd was unable to write. Image size '${image_filename_size}', Image file '${image_filename}', Device '${image_device}', Device size '${image_device_size}' \nlogs: $(cat "$TMP_ERROR_LOGS_f" )\n$(dmesg | grep -i error | tail -4)\Partitions:\n$( EL_DEBUG=0 partitions-list --show-all --show-disks --show-raw )"
             guitool error "$( eval_gettext "Error writing to the USB" ). $( eval_gettext "Failed to copy all the content, is your USB too small for the ISO? This error can be also caused by a bad quality USB. We recommend only using good quality devices, for example, the SanDisk Ultra Flair 32GB, which is cheap and fast enough to have the Persistence feature work well. You could also try running this tool from a terminal with the option to perform a forced full cleansing of your device, like:" )  $(basename "$0" ) --clean"
             exit 1
         fi
