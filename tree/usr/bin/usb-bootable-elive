@@ -713,6 +713,7 @@ main(){
     if [[ "$image_device" != "/dev/mmcblk"* ]] ; then
         # this is external HD's, or like an external NVME/SSD from external USB convertor
         if udevadm info --query=property --name="$image_device" | grep -qs "ID_TYPE=disk" ; then
+            el_debug "disabling dd in sync mode (progress bar will be not very precise)"
             unset opts_dd_sync
         fi
     fi
