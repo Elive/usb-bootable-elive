@@ -630,7 +630,7 @@ main(){
         fi
 
         if ! ((is_checksum_ok)) ; then
-            guitool error "$( eval_gettext "The integrity verification doesn't look correct." )"
+            guitool error "$( eval_gettext "The integrity verification doesn't look to be correct." )"
             el_error "integrity has not been verified"
             exit 1
         fi
