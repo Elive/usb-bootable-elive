@@ -252,7 +252,7 @@ guitool(){
                 esac
             fi
 
-            { ( while test -s "$TMP_PROGRESS_WORKING_f" ; do echo 10 ; tail -n 1 "$TMP_PROGRESS_WORKING_f" || true ; sleep 1 ; done | $guitool --progress --text="$message_doing_magic" --pulsate --auto-close ) & disown ; } 2>/dev/null
+            { ( while test -s "$TMP_PROGRESS_WORKING_f" ; do echo 10 ; tail -n 1 "$TMP_PROGRESS_WORKING_f" || true ; sleep 1 ; done | $guitool --progress --text="${message_doing_magic}\n\n${message_doing_magic_extra}" --pulsate --auto-close ) & disown ; } 2>/dev/null
 
             ;;
         working_stop)
@@ -714,6 +714,9 @@ main(){
         # this is external HD's, or like an external NVME/SSD from external USB convertor
         if udevadm info --query=property --name="$image_device" | grep -qs "ID_TYPE=disk" ; then
             el_debug "disabling dd in sync mode (progress bar will be not very precise)"
+            local message_doing_magic_extra
+            message_magic_extra="$( printf "$( eval_gettext "Note: due to optimizations, the progress bar will appear slower in the end." )" "" )"
+
             unset opts_dd_sync
         fi
     fi
