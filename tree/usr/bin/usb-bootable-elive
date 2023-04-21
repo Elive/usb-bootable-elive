@@ -284,7 +284,7 @@ usage(){
     echo -e "\nOptions:"
     echo -e "--auto              Do not ask for USB device, just use the one that you have actually inserted"
     echo -e "--simulate          Simulation mode, does not write real data to the device"
-    echo -e "--force             Force writing, required when a persistence partition is found"
+    echo -e "--fast              Fast writing, progress bar will not be syncronized"
     echo -e "elive.iso|img       Use the given image to record"
     # - options }}}
 }
@@ -306,7 +306,7 @@ main(){
                 echo -e " * if you give the image as parameter, it will not download it but use the given one"
                 echo -e "Example: $(basename $0) --auto elive_2.9.12_beta_usb.img"
                 echo -e "Note: this tool can be used to record most of linux distro's in USB too"
-                echo -e "Other options: -s for simulate, -f for force writing, -c for cleanup (full fill with zeroes first)"
+                echo -e "Other options: -s for simulate, -f for fast writing, -c for cleanup (full fill with zeroes first)"
                 exit
                 ;;
             --auto)
@@ -345,8 +345,8 @@ main(){
                 usage
                 exit
                 ;;
-            -f|--force)
-                is_mode_force=1
+            -f|--fast)
+                is_mode_fast=1
                 ;;
             -s|--simulate)
                 is_mode_simulate=1
@@ -710,15 +710,16 @@ main(){
     fi
 
     # async mode for faster devices {{{
-    if [[ "$image_device" != "/dev/mmcblk"* ]] ; then
+    if [[ "$image_device" = "/dev/mmcblk"* ]] || ((is_mode_fast)) ; then
         # this is external HD's, or like an external NVME/SSD from external USB convertor
-        if udevadm info --query=property --name="$image_device" | grep -qs "ID_TYPE=disk" ; then
+        # update: seems like all USBs shows like that, so don't use it
+        #if udevadm info --query=property --name="$image_device" | grep -qs "ID_TYPE=disk" ; then
             el_debug "disabling dd in sync mode (progress bar will be not very precise)"
             local message_doing_magic_extra
             message_magic_extra="$( printf "$( eval_gettext "Note: due to optimizations, the progress bar will appear slower in the end." )" "" )"
 
             unset opts_dd_sync
-        fi
+        #fi
     fi
     # - async mode for faster devices }}}
 
@@ -761,8 +762,7 @@ main(){
 
         if ((is_persistence_included)) ; then
             if ((is_auto_mode)) ; then
-                if ! ((is_mode_force)) ; then
-                    NOREPORTS=1 el_error "You have a persistence partition included, use with -f to force recording of USB (will delete persistence)"
+                if ! guitool question "$( eval_gettext "You have a persistence partition in your USB, proceeding will delete it. Are you sure to continue?" )" ; then
                     exit 1
                 fi
             else
