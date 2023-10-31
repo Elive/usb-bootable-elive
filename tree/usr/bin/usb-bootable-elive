@@ -125,9 +125,9 @@ generate_menu_selector(){
             fi
 
             if echo "$entry" | awk -v FS="::" '{print $5}' | grep -qsE "(no name|swap|unformatted)" ; then
-                menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor}' )")
+                menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor}' | sort -u | tr '\n' ' ' )")
             else
-                menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor " - "$5}' )")
+                menu+=("$( echo "$entry" | awk -v FS="::" -v id_vendor="$id_vendor" '{print id_vendor " - "$5}' | sort -u | tr '\n' ' ' )")
             fi
         fi
     done 3<<< "$( EL_DEBUG=0 partitions-list --show-all --show-disks --show-raw | awk -v FS="::" '{if ($3 != "swap") print $0}' )"
