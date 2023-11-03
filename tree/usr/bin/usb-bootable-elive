@@ -365,10 +365,10 @@ main(){
     cd "$cache_dir"
 
     # do not run it in the live system
-    if grep -qs "boot=live" /proc/cmdline ; then
-        guitool error "$( eval_gettext "This tool is made to work under an installed version of Elive. Install Elive first in order to use it." )"
-        exit
-    fi
+    # if grep -qs "boot=live" /proc/cmdline ; then
+    #     guitool error "$( eval_gettext "This tool is made to work under an installed version of Elive. Install Elive first in order to use it." )"
+    #     exit
+    # fi
 
 
     if ! ((is_auto_mode)) ; then
