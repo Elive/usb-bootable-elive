@@ -87,7 +87,7 @@ generate_menu_selector(){
         [[ ! -b "$part" ]] && continue
         # ignore partitions (end in numbers)
         case "$part" in
-            "/dev/mmcblk"*)
+            "/dev/mmcblk"*|"/dev/md"*)
                 echo "$part" | grep -qsE "p[[:digit:]]+$" && continue
                 ;;
             "/dev/nvme"*)
@@ -710,7 +710,7 @@ main(){
     fi
 
     # async mode for faster devices {{{
-    if [[ "$image_device" = "/dev/mmcblk"* ]] || ((is_mode_fast)) ; then
+    if [[ "$image_device" = "/dev/mmcblk"* ]] || [[ "$image_device" = "/dev/nvme"* ]] || [[ "$image_device" = "/dev/md"* ]] || ((is_mode_fast)) ; then
         # this is external HD's, or like an external NVME/SSD from external USB convertor
         # update: seems like all USBs shows like that, so don't use it
         #if udevadm info --query=property --name="$image_device" | grep -qs "ID_TYPE=disk" ; then
